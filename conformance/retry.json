@@ -1,0 +1,377 @@
+{
+  "$schema_note": "Transport retry policy. Defaults: max_retries 2, base_delay_ms 250, max_delay_ms 60000. 401 → recover token (see token_recovery.json) and retry ONCE, any method. 429 → wait rate_limit_wait_ms and retry (any method; bounded by max_retries). 5xx or network error → retry ONLY idempotent methods (GET/HEAD/OPTIONS) with backoff. Backoff for retry attempt n (1-based) = min(base * 2^n + base * 2^n * 0.5 * random, max). Retries must re-send the SAME body bytes (a consumed request body is the #1 way this breaks). `random` is the injected [0,1) value. Response scripts are consumed in order; `network_error` means the fetch itself rejects.",
+  "defaults": {
+    "max_retries": 2,
+    "base_delay_ms": 250,
+    "max_delay_ms": 60000
+  },
+  "idempotent_methods": [
+    "GET",
+    "HEAD",
+    "OPTIONS"
+  ],
+  "rate_limit_wait_ms": {
+    "$note": "Reads `X-RateLimit-Reset` (NOT Retry-After). Values > 1e9 are absolute epoch SECONDS; smaller values are a delta in seconds. Absent/non-numeric → 1000ms. Clamped to [0, max_delay_ms].",
+    "cases": [
+      {
+        "header": "1700000005",
+        "now_ms": 1700000000000,
+        "max_delay_ms": 60000,
+        "expect_ms": 5000,
+        "note": "absolute epoch seconds"
+      },
+      {
+        "header": "3",
+        "now_ms": 0,
+        "max_delay_ms": 60000,
+        "expect_ms": 3000,
+        "note": "delta seconds"
+      },
+      {
+        "header": null,
+        "now_ms": 0,
+        "max_delay_ms": 60000,
+        "expect_ms": 1000,
+        "note": "absent → short default"
+      },
+      {
+        "header": "soon",
+        "now_ms": 0,
+        "max_delay_ms": 60000,
+        "expect_ms": 1000,
+        "note": "non-numeric → short default"
+      },
+      {
+        "header": "1699999990",
+        "now_ms": 1700000000000,
+        "max_delay_ms": 60000,
+        "expect_ms": 0,
+        "note": "reset already passed → 0"
+      },
+      {
+        "header": "600",
+        "now_ms": 0,
+        "max_delay_ms": 60000,
+        "expect_ms": 60000,
+        "note": "clamped to max_delay_ms"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "429 honors X-RateLimit-Reset then succeeds",
+      "method": "GET",
+      "now_ms": 0,
+      "random": 0,
+      "responses": [
+        {
+          "status": 429,
+          "headers": {
+            "x-ratelimit-reset": "2"
+          },
+          "body": "{}"
+        },
+        {
+          "status": 200,
+          "body": "{\"ok\":true}"
+        }
+      ],
+      "expect": {
+        "final_status": 200,
+        "calls": 2,
+        "sleeps_ms": [
+          2000
+        ]
+      }
+    },
+    {
+      "name": "GET retried on 503 with backoff (random=0 → base*2^1)",
+      "method": "GET",
+      "random": 0,
+      "retry": {
+        "max_retries": 3,
+        "base_delay_ms": 100,
+        "max_delay_ms": 9999
+      },
+      "responses": [
+        {
+          "status": 503
+        },
+        {
+          "status": 200,
+          "body": "{\"ok\":true}"
+        }
+      ],
+      "expect": {
+        "final_status": 200,
+        "calls": 2,
+        "sleeps_ms": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "GET retried on 503 with jitter (random=1 → base*2^1*1.5)",
+      "method": "GET",
+      "random": 1,
+      "retry": {
+        "max_retries": 3,
+        "base_delay_ms": 100,
+        "max_delay_ms": 9999
+      },
+      "responses": [
+        {
+          "status": 503
+        },
+        {
+          "status": 200,
+          "body": "{\"ok\":true}"
+        }
+      ],
+      "expect": {
+        "final_status": 200,
+        "calls": 2,
+        "sleeps_ms": [
+          300
+        ]
+      }
+    },
+    {
+      "name": "POST NOT retried on 503",
+      "method": "POST",
+      "body": "{\"amount\":100}",
+      "random": 0,
+      "responses": [
+        {
+          "status": 503
+        }
+      ],
+      "expect": {
+        "final_status": 503,
+        "calls": 1,
+        "sleeps_ms": []
+      }
+    },
+    {
+      "name": "GET retried on network error, rethrows after max_retries",
+      "method": "GET",
+      "random": 0,
+      "retry": {
+        "max_retries": 2,
+        "base_delay_ms": 1,
+        "max_delay_ms": 10
+      },
+      "responses": [
+        {
+          "network_error": true
+        },
+        {
+          "network_error": true
+        },
+        {
+          "network_error": true
+        }
+      ],
+      "expect": {
+        "throws": "network_error",
+        "calls": 3,
+        "sleeps_ms": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "name": "POST network error NOT retried",
+      "method": "POST",
+      "body": "x",
+      "random": 0,
+      "responses": [
+        {
+          "network_error": true
+        }
+      ],
+      "expect": {
+        "throws": "network_error",
+        "calls": 1,
+        "sleeps_ms": []
+      }
+    },
+    {
+      "name": "5xx retries give up after max_retries and return the last response",
+      "method": "GET",
+      "random": 0,
+      "retry": {
+        "max_retries": 2,
+        "base_delay_ms": 1,
+        "max_delay_ms": 10
+      },
+      "responses": [
+        {
+          "status": 502
+        },
+        {
+          "status": 502
+        },
+        {
+          "status": 502
+        }
+      ],
+      "expect": {
+        "final_status": 502,
+        "calls": 3,
+        "sleeps_ms": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "name": "429 retries are bounded by max_retries",
+      "method": "GET",
+      "now_ms": 0,
+      "random": 0,
+      "retry": {
+        "max_retries": 1,
+        "base_delay_ms": 1,
+        "max_delay_ms": 10
+      },
+      "responses": [
+        {
+          "status": 429,
+          "headers": {
+            "x-ratelimit-reset": "1"
+          }
+        },
+        {
+          "status": 429,
+          "headers": {
+            "x-ratelimit-reset": "1"
+          }
+        }
+      ],
+      "expect": {
+        "final_status": 429,
+        "calls": 2,
+        "sleeps_ms": [
+          10
+        ]
+      }
+    },
+    {
+      "name": "429 retry re-sends the SAME POST body",
+      "method": "POST",
+      "body": "hello",
+      "now_ms": 0,
+      "random": 0,
+      "responses": [
+        {
+          "status": 429,
+          "headers": {
+            "x-ratelimit-reset": "1"
+          }
+        },
+        {
+          "status": 200,
+          "body": "{\"ok\":true}"
+        }
+      ],
+      "expect": {
+        "final_status": 200,
+        "calls": 2,
+        "sleeps_ms": [
+          1000
+        ],
+        "bodies_seen": [
+          "hello",
+          "hello"
+        ]
+      }
+    },
+    {
+      "name": "401 → refresh (rotation) → retry once with the NEW bearer and the SAME body",
+      "method": "POST",
+      "body": "{\"amount\":100}",
+      "random": 0,
+      "token_manager": {
+        "access_token": "at_live_OLD",
+        "refresh_token": "r1",
+        "client_id": "c",
+        "oauth_response": {
+          "access_token": "at_live_NEW",
+          "refresh_token": "r2"
+        }
+      },
+      "responses": [
+        {
+          "status": 401,
+          "body": "{}"
+        },
+        {
+          "status": 200,
+          "body": "{\"ok\":true}"
+        }
+      ],
+      "expect": {
+        "final_status": 200,
+        "calls": 2,
+        "sleeps_ms": [],
+        "bodies_seen": [
+          "{\"amount\":100}",
+          "{\"amount\":100}"
+        ],
+        "authorization_seen": [
+          "Bearer at_live_OLD",
+          "Bearer at_live_NEW"
+        ],
+        "oauth_calls": 1
+      }
+    },
+    {
+      "name": "401 twice → only ONE refresh, second 401 surfaces",
+      "method": "GET",
+      "random": 0,
+      "token_manager": {
+        "access_token": "at_live_OLD",
+        "refresh_token": "r1",
+        "client_id": "c",
+        "oauth_response": {
+          "access_token": "at_live_NEW",
+          "refresh_token": "r2"
+        }
+      },
+      "responses": [
+        {
+          "status": 401,
+          "body": "{}"
+        },
+        {
+          "status": 401,
+          "body": "{}"
+        }
+      ],
+      "expect": {
+        "final_status": 401,
+        "calls": 2,
+        "sleeps_ms": [],
+        "oauth_calls": 1
+      }
+    },
+    {
+      "name": "401 with no recovery capability surfaces immediately",
+      "method": "GET",
+      "random": 0,
+      "responses": [
+        {
+          "status": 401,
+          "body": "{}"
+        }
+      ],
+      "expect": {
+        "final_status": 401,
+        "calls": 1,
+        "sleeps_ms": []
+      }
+    }
+  ]
+}

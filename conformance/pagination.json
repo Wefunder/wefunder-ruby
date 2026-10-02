@@ -1,0 +1,320 @@
+{
+  "$schema_note": "Opaque-cursor auto-pagination. `pages` maps a request cursor (null = first page) to the response; cursors are compared by value AND type — a string cursor must be sent back verbatim, never coerced. Stop when `meta.has_more === false`, or `meta.next_cursor` is null/absent, or the cursor repeats one already used (loop guard). `cursors_sent` is the exact sequence of cursors the client must request.",
+  "cases": [
+    {
+      "name": "walks until next_cursor is null",
+      "pages": [
+        {
+          "cursor": null,
+          "response": {
+            "data": [
+              1,
+              2
+            ],
+            "meta": {
+              "has_more": true,
+              "next_cursor": 100
+            }
+          }
+        },
+        {
+          "cursor": 100,
+          "response": {
+            "data": [
+              3,
+              4
+            ],
+            "meta": {
+              "has_more": true,
+              "next_cursor": 200
+            }
+          }
+        },
+        {
+          "cursor": 200,
+          "response": {
+            "data": [
+              5
+            ],
+            "meta": {
+              "has_more": false,
+              "next_cursor": null
+            }
+          }
+        }
+      ],
+      "expect": {
+        "items": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "cursors_sent": [
+          null,
+          100,
+          200
+        ]
+      }
+    },
+    {
+      "name": "string (timestamp) cursor passed back verbatim",
+      "pages": [
+        {
+          "cursor": null,
+          "response": {
+            "data": [
+              "a"
+            ],
+            "meta": {
+              "next_cursor": "2025-01-01T00:00:00Z"
+            }
+          }
+        },
+        {
+          "cursor": "2025-01-01T00:00:00Z",
+          "response": {
+            "data": [
+              "b"
+            ],
+            "meta": {
+              "next_cursor": null
+            }
+          }
+        }
+      ],
+      "expect": {
+        "items": [
+          "a",
+          "b"
+        ],
+        "cursors_sent": [
+          null,
+          "2025-01-01T00:00:00Z"
+        ]
+      }
+    },
+    {
+      "name": "has_more=false stops even when a cursor is present",
+      "pages": [
+        {
+          "cursor": null,
+          "response": {
+            "data": [
+              1
+            ],
+            "meta": {
+              "has_more": false,
+              "next_cursor": 999
+            }
+          }
+        }
+      ],
+      "expect": {
+        "items": [
+          1
+        ],
+        "cursors_sent": [
+          null
+        ]
+      }
+    },
+    {
+      "name": "repeated cursor stops (no infinite loop)",
+      "pages": [
+        {
+          "cursor": null,
+          "response": {
+            "data": [
+              1
+            ],
+            "meta": {
+              "next_cursor": 7
+            }
+          }
+        },
+        {
+          "cursor": 7,
+          "response": {
+            "data": [
+              1
+            ],
+            "meta": {
+              "next_cursor": 7
+            }
+          }
+        }
+      ],
+      "expect": {
+        "items": [
+          1,
+          1
+        ],
+        "cursors_sent": [
+          null,
+          7
+        ]
+      }
+    },
+    {
+      "name": "empty result set",
+      "pages": [
+        {
+          "cursor": null,
+          "response": {
+            "data": [],
+            "meta": {}
+          }
+        }
+      ],
+      "expect": {
+        "items": [],
+        "cursors_sent": [
+          null
+        ]
+      }
+    },
+    {
+      "name": "null data treated as empty",
+      "pages": [
+        {
+          "cursor": null,
+          "response": {
+            "data": null,
+            "meta": {
+              "has_more": false
+            }
+          }
+        }
+      ],
+      "expect": {
+        "items": [],
+        "cursors_sent": [
+          null
+        ]
+      }
+    },
+    {
+      "name": "Investment Delta API: next_cursor ALWAYS present, has_more terminates",
+      "pages": [
+        {
+          "cursor": null,
+          "response": {
+            "data": [
+              {
+                "id": "inv_1",
+                "visible": true
+              }
+            ],
+            "meta": {
+              "mode": "delta",
+              "has_more": true,
+              "next_cursor": "c1"
+            }
+          }
+        },
+        {
+          "cursor": "c1",
+          "response": {
+            "data": [
+              {
+                "id": "inv_2",
+                "visible": false
+              }
+            ],
+            "meta": {
+              "mode": "delta",
+              "has_more": false,
+              "next_cursor": "c2"
+            }
+          }
+        }
+      ],
+      "expect": {
+        "items": [
+          {
+            "id": "inv_1",
+            "visible": true
+          },
+          {
+            "id": "inv_2",
+            "visible": false
+          }
+        ],
+        "cursors_sent": [
+          null,
+          "c1"
+        ]
+      }
+    },
+    {
+      "name": "explore: offset-as-cursor (25 → 50)",
+      "pages": [
+        {
+          "cursor": null,
+          "response": {
+            "data": [
+              {
+                "id": "ofr_1"
+              }
+            ],
+            "meta": {
+              "total_count": 3,
+              "has_more": true,
+              "next_cursor": 25
+            }
+          }
+        },
+        {
+          "cursor": 25,
+          "response": {
+            "data": [
+              {
+                "id": "ofr_2"
+              }
+            ],
+            "meta": {
+              "total_count": 3,
+              "has_more": true,
+              "next_cursor": 50
+            }
+          }
+        },
+        {
+          "cursor": 50,
+          "response": {
+            "data": [
+              {
+                "id": "ofr_3"
+              }
+            ],
+            "meta": {
+              "total_count": 3,
+              "has_more": false,
+              "next_cursor": null
+            }
+          }
+        }
+      ],
+      "expect": {
+        "items": [
+          {
+            "id": "ofr_1"
+          },
+          {
+            "id": "ofr_2"
+          },
+          {
+            "id": "ofr_3"
+          }
+        ],
+        "cursors_sent": [
+          null,
+          25,
+          50
+        ]
+      }
+    }
+  ]
+}

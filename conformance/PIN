@@ -1,0 +1,4 @@
+# Source of the vendored vectors: Wefunder/wefunder-node, conformance/*.json at this ref.
+# Refresh with:  ruby script/sync_conformance.rb [ref]
+repo=Wefunder/wefunder-node
+ref=31c4ab73708203030726b593aaa4e866ecf76ec4

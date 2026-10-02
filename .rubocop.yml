@@ -1,0 +1,65 @@
+plugins:
+  - rubocop-rspec
+
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - "lib/wefunder_generated/**/*"
+    - "lib/wefunder_generated.rb"
+    - "vendor/**/*"
+
+Metrics:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
+Style/HashSyntax:
+  EnforcedShorthandSyntax: never
+Naming/MethodParameterName:
+  MinNameLength: 1
+
+RSpec/ExampleLength:
+  Enabled: false
+RSpec/MultipleExpectations:
+  Enabled: false
+RSpec/DescribeClass:
+  Enabled: false
+RSpec/NoExpectationExample:
+  Enabled: false
+RSpec/MultipleMemoizedHelpers:
+  Enabled: false
+RSpec/NestedGroups:
+  Max: 4
+
+RSpec/SpecFilePathFormat:
+  Enabled: false
+RSpec/SpecFilePathSuffix:
+  Enabled: false
+
+# The conformance and example gates are data-driven: vector files loaded once at the top of the
+# spec file and iterated into examples. That is the point of them, so the cops that fight it
+# are off for spec/.
+Metrics/ParameterLists:
+  Enabled: false
+RSpec/LeakyLocalVariable:
+  Enabled: false
+RSpec/MultipleDescribes:
+  Enabled: false
+RSpec/LeakyConstantDeclaration:
+  Enabled: false
+Lint/ConstantDefinitionInBlock:
+  Exclude: ["spec/**/*"]
+Layout/LineLength:
+  Max: 130
+  AllowedPatterns: ['^\s*#']
+  Exclude: ["spec/**/*", "script/**/*"]
+
+# verify_* / check_* mirror the other SDKs' names (the contract); check_signature returns a reason, not a boolean.
+Naming/PredicateMethod:
+  Enabled: false

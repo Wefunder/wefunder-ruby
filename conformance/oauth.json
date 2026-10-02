@@ -1,0 +1,267 @@
+{
+  "$schema_note": "Hosts, authorize URL, PKCE, token requests, and mode detection. The API base is ONE host for both modes (the edge gateway routes by credential mode) — never route by token prefix. /token is on the gateway; /authorize (browser consent) is on wefunder.com for live and oauth.wefunder-sandbox.com for pk_test_ client_ids. Override precedence: specific (authorize_base_url / token_base_url) > oauth_base_url alias > default.",
+  "constants": {
+    "api_base_url": "https://api.wefunder.com",
+    "api_version_header": "Wefunder-Version",
+    "default_api_version": "2025-01-15",
+    "authorize_base_url_live": "https://wefunder.com/oauth",
+    "authorize_base_url_sandbox": "https://oauth.wefunder-sandbox.com/oauth",
+    "token_base_url": "https://api.wefunder.com/oauth",
+    "request_id_header": "X-Wf-Request-Id",
+    "sandbox_client_id_prefix": "pk_test_",
+    "live_client_id_prefix": "pk_live_"
+  },
+  "mode_from_token": [
+    {
+      "token": "at_live_x",
+      "expect": "live"
+    },
+    {
+      "token": "at_test_x",
+      "expect": "test"
+    },
+    {
+      "token": "opaque",
+      "expect": "unknown"
+    },
+    {
+      "token": "",
+      "expect": "unknown"
+    }
+  ],
+  "pkce": {
+    "$note": "RFC 7636 §4.2 S256: challenge = base64url(sha256(ascii(verifier))) without padding; verifier is 43–128 chars of [A-Za-z0-9-._~]. Vector from RFC 7636 Appendix B.",
+    "verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+    "challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+    "method": "S256",
+    "verifier_charset_regex": "^[A-Za-z0-9._~-]{43,128}$"
+  },
+  "authorize_url": [
+    {
+      "name": "live client_id → live host; params",
+      "client_id": "pk_live_c",
+      "redirect_uri": "https://app.example/cb",
+      "scopes": [
+        "read:public",
+        "read:investments"
+      ],
+      "state": "xyz",
+      "code_challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+      "expect": {
+        "base": "https://wefunder.com/oauth/authorize",
+        "params": {
+          "response_type": "code",
+          "client_id": "pk_live_c",
+          "redirect_uri": "https://app.example/cb",
+          "scope": "read:public read:investments",
+          "state": "xyz",
+          "code_challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+          "code_challenge_method": "S256"
+        }
+      }
+    },
+    {
+      "name": "pk_test_ client_id → sandbox consent host",
+      "client_id": "pk_test_abc",
+      "redirect_uri": "https://a/cb",
+      "scopes": [
+        "read:public"
+      ],
+      "state": "s",
+      "code_challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+      "expect": {
+        "base": "https://oauth.wefunder-sandbox.com/oauth/authorize"
+      }
+    },
+    {
+      "name": "non-prefixed client_id → live host",
+      "client_id": "cid",
+      "redirect_uri": "https://a/cb",
+      "scopes": [
+        "x"
+      ],
+      "state": "s",
+      "code_challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+      "expect": {
+        "base": "https://wefunder.com/oauth/authorize"
+      }
+    },
+    {
+      "name": "explicit authorize_base_url beats the pk_test_ default",
+      "client_id": "pk_test_abc",
+      "redirect_uri": "https://a/cb",
+      "scopes": [
+        "x"
+      ],
+      "state": "s",
+      "code_challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+      "authorize_base_url": "https://login.example/oauth",
+      "expect": {
+        "base": "https://login.example/oauth/authorize"
+      }
+    },
+    {
+      "name": "token_base_url does NOT affect the authorize host",
+      "client_id": "c",
+      "redirect_uri": "https://a/cb",
+      "scopes": [
+        "x"
+      ],
+      "state": "s",
+      "code_challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+      "token_base_url": "https://api.wefunder.com/oauth",
+      "expect": {
+        "base": "https://wefunder.com/oauth/authorize"
+      }
+    },
+    {
+      "name": "oauth_base_url alias sets the authorize host",
+      "client_id": "c",
+      "redirect_uri": "https://a/cb",
+      "scopes": [
+        "x"
+      ],
+      "state": "s",
+      "code_challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+      "oauth_base_url": "https://both.example/oauth",
+      "expect": {
+        "base": "https://both.example/oauth/authorize"
+      }
+    }
+  ],
+  "token_host": [
+    {
+      "name": "default",
+      "overrides": {},
+      "expect_url": "https://api.wefunder.com/oauth/token"
+    },
+    {
+      "name": "token_base_url",
+      "overrides": {
+        "token_base_url": "https://specific.example/oauth"
+      },
+      "expect_url": "https://specific.example/oauth/token"
+    },
+    {
+      "name": "oauth_base_url alias",
+      "overrides": {
+        "oauth_base_url": "https://both.example/oauth"
+      },
+      "expect_url": "https://both.example/oauth/token"
+    },
+    {
+      "name": "specific beats alias",
+      "overrides": {
+        "oauth_base_url": "https://alias.example/oauth",
+        "token_base_url": "https://specific.example/oauth"
+      },
+      "expect_url": "https://specific.example/oauth/token"
+    },
+    {
+      "name": "authorize_base_url does NOT affect the token host",
+      "overrides": {
+        "authorize_base_url": "https://login.example/oauth"
+      },
+      "expect_url": "https://api.wefunder.com/oauth/token"
+    }
+  ],
+  "token_requests": {
+    "$note": "POST <token_base>/token, Content-Type application/x-www-form-urlencoded. `params` is the exact form body (order not significant); `absent` keys must NOT be sent.",
+    "cases": [
+      {
+        "name": "client_credentials with scopes",
+        "grant": "client_credentials",
+        "client_id": "cid",
+        "client_secret": "secret",
+        "scopes": [
+          "read:public"
+        ],
+        "expect": {
+          "params": {
+            "grant_type": "client_credentials",
+            "client_id": "cid",
+            "client_secret": "secret",
+            "scope": "read:public"
+          }
+        }
+      },
+      {
+        "name": "client_credentials without scopes omits scope",
+        "grant": "client_credentials",
+        "client_id": "cid",
+        "client_secret": "secret",
+        "expect": {
+          "params": {
+            "grant_type": "client_credentials",
+            "client_id": "cid",
+            "client_secret": "secret"
+          },
+          "absent": [
+            "scope"
+          ]
+        }
+      },
+      {
+        "name": "authorization_code + PKCE, public client (no secret)",
+        "grant": "authorization_code",
+        "client_id": "cid",
+        "code": "authcode",
+        "redirect_uri": "https://app.example/cb",
+        "code_verifier": "verifier123",
+        "expect": {
+          "params": {
+            "grant_type": "authorization_code",
+            "client_id": "cid",
+            "code": "authcode",
+            "redirect_uri": "https://app.example/cb",
+            "code_verifier": "verifier123"
+          },
+          "absent": [
+            "client_secret"
+          ]
+        }
+      },
+      {
+        "name": "authorization_code, confidential client",
+        "grant": "authorization_code",
+        "client_id": "cid",
+        "client_secret": "s",
+        "code": "authcode",
+        "redirect_uri": "https://app.example/cb",
+        "code_verifier": "v",
+        "expect": {
+          "params": {
+            "grant_type": "authorization_code",
+            "client_id": "cid",
+            "client_secret": "s",
+            "code": "authcode",
+            "redirect_uri": "https://app.example/cb",
+            "code_verifier": "v"
+          }
+        }
+      },
+      {
+        "name": "refresh_token",
+        "grant": "refresh_token",
+        "client_id": "cid",
+        "refresh_token": "r1",
+        "expect": {
+          "params": {
+            "grant_type": "refresh_token",
+            "client_id": "cid",
+            "refresh_token": "r1"
+          },
+          "absent": [
+            "client_secret"
+          ]
+        }
+      }
+    ],
+    "error": {
+      "$note": "A non-2xx token response raises an error whose message includes the HTTP status.",
+      "status": 400,
+      "body": "{\"error\":\"invalid_grant\"}",
+      "expect_message_includes": "400"
+    }
+  }
+}

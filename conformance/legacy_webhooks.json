@@ -1,0 +1,83 @@
+{
+  "$schema_note": "RETIRED attribution scheme, still accepted for stranded subscribers: headers `X-Wefunder-Signature: sha256=<hex>` + `X-Wefunder-Timestamp: <unix>` (+ optional `X-Wefunder-Event`, `X-Wefunder-Delivery-Id`). hex = HMAC-SHA256(secret, `${timestamp}.${raw_body}`). Auto-detected only when `Wefunder-Signature` is ABSENT.",
+  "verify": [
+    {
+      "name": "known-answer vector accepts",
+      "secret": "whsec_known_answer_vector",
+      "payload": "{\"event\":\"investment.created\",\"data\":{\"id\":42}}",
+      "signature": "sha256=f8d26f3a80ecee5f72f9fe87233f8cc71539f45e11d08c0c4f88d7d308fa1c0f",
+      "timestamp": 1700000000,
+      "tolerance_seconds": 0,
+      "expect_valid": true
+    },
+    {
+      "name": "body change rejects",
+      "secret": "whsec_known_answer_vector",
+      "payload": "{\"event\":\"investment.created\",\"data\":{\"id\":43}}",
+      "signature": "sha256=f8d26f3a80ecee5f72f9fe87233f8cc71539f45e11d08c0c4f88d7d308fa1c0f",
+      "timestamp": 1700000000,
+      "tolerance_seconds": 0,
+      "expect_valid": false
+    },
+    {
+      "name": "non-numeric timestamp rejects (never throws)",
+      "secret": "whsec_known_answer_vector",
+      "payload": "{\"event\":\"investment.created\",\"data\":{\"id\":42}}",
+      "signature": "sha256=deadbeef",
+      "timestamp": "not-a-number",
+      "tolerance_seconds": 300,
+      "now": 1700000000,
+      "expect_valid": false
+    },
+    {
+      "name": "stale timestamp rejects under default tolerance",
+      "secret": "whsec_known_answer_vector",
+      "payload": "{\"event\":\"investment.created\",\"data\":{\"id\":42}}",
+      "signature": "sha256=f8d26f3a80ecee5f72f9fe87233f8cc71539f45e11d08c0c4f88d7d308fa1c0f",
+      "timestamp": 1700000000,
+      "tolerance_seconds": 300,
+      "now": 1700000301,
+      "expect_valid": false
+    }
+  ],
+  "construct": [
+    {
+      "name": "legacy headers map onto the envelope: id from delivery-id header, event from event header, data = whole body",
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"event\":\"investment.confirmed\",\"investment_id\":7}",
+      "now": 1700000000,
+      "headers": {
+        "x-wefunder-signature": "sha256=3d1d7136b39f27d957db729ab02cf2808b82095451f1b762d8526e65e9b7bca1",
+        "x-wefunder-timestamp": "1700000000",
+        "x-wefunder-event": "investment.confirmed",
+        "x-wefunder-delivery-id": "whd_123"
+      },
+      "expect": {
+        "result": "ok",
+        "event": {
+          "id": "whd_123",
+          "event": "investment.confirmed",
+          "timestamp": 1700000000,
+          "mode": "live",
+          "data": {
+            "event": "investment.confirmed",
+            "investment_id": 7
+          }
+        }
+      }
+    },
+    {
+      "name": "bad legacy signature → signature_mismatch",
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{}",
+      "now": 1700000000,
+      "headers": {
+        "x-wefunder-signature": "sha256=bad",
+        "x-wefunder-timestamp": "1700000000"
+      },
+      "expect": {
+        "result": "signature_mismatch"
+      }
+    }
+  ]
+}

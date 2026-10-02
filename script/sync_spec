@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Sync openapi/openapi.yaml from the canonical Wefunder swagger. The SDK ships the PUBLIC tier
+# only (stable + beta); filtering is owned by the wefunder repo's
+# api-docs/scripts/build-filtered-spec.js, so this runs it and copies the output.
+#   script/sync_spec /path/to/wefunder    # or WEFUNDER_REPO=...
+#   script/generate
+set -euo pipefail
+cd "$(dirname "$0")/.."
+REPO="${WEFUNDER_REPO:-${1:-}}"
+[ -n "$REPO" ] || { echo "error: set WEFUNDER_REPO=/path/to/wefunder (or pass it as an argument)." >&2; exit 1; }
+[ -f "$REPO/api-docs/scripts/build-filtered-spec.js" ] || { echo "error: $REPO is not a wefunder checkout" >&2; exit 1; }
+echo "→ building public-tier spec via the canonical filter…"
+(cd "$REPO/api-docs" && node scripts/build-filtered-spec.js)
+cp "$REPO/swagger/v2/swagger.public.yaml" openapi/openapi.yaml
+echo "✓ wrote openapi/openapi.yaml ($(grep -c 'operationId:' openapi/openapi.yaml) public operations)"
+echo "  next: script/generate && git add openapi lib/wefunder_generated lib/wefunder_generated.rb"

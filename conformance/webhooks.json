@@ -1,0 +1,490 @@
+{
+  "$schema_note": "Platform-events webhook signatures. Header `Wefunder-Signature: t=<unix>,v1=<hex>[,v1=<hex>]`; v1 = lowercase hex HMAC-SHA256(secret, `${t}.${raw_body}`). `now` is unix seconds. `result` is `ok` or one of the failure reasons. When `expect.event` is present every listed key must match (subset match; `data` compared deep-equal when present).",
+  "header_name": "Wefunder-Signature",
+  "default_tolerance_seconds": 300,
+  "failure_reasons": [
+    "missing_header",
+    "malformed_header",
+    "timestamp_out_of_tolerance",
+    "signature_mismatch",
+    "invalid_payload"
+  ],
+  "check_order": [
+    "missing_header",
+    "malformed_header",
+    "timestamp_out_of_tolerance",
+    "signature_mismatch",
+    "invalid_payload"
+  ],
+  "docs_vector": {
+    "secret": "whsec_docvector_2f9c1a4b8e7d6c5a",
+    "t": 1705334400,
+    "body": "{\"id\":\"evt_0KZq8xExampleOpened01\",\"event\":\"offering.opened\",\"created_at\":\"2026-01-15T12:00:00Z\",\"mode\":\"live\",\"data\":{\"offering\":\"ofr_9m2ExampleRound00\",\"status\":\"open\",\"company\":{\"name\":\"Example Company\",\"url\":\"example-company\"}}}",
+    "v1": "0385f3fa13024fc4d851034779083ea49483162d32b668d7646e2b94fccd84db"
+  },
+  "verify": [
+    {
+      "name": "docs vector: published header verifies",
+      "tolerance_seconds": 300,
+      "secret": "whsec_docvector_2f9c1a4b8e7d6c5a",
+      "payload": "{\"id\":\"evt_0KZq8xExampleOpened01\",\"event\":\"offering.opened\",\"created_at\":\"2026-01-15T12:00:00Z\",\"mode\":\"live\",\"data\":{\"offering\":\"ofr_9m2ExampleRound00\",\"status\":\"open\",\"company\":{\"name\":\"Example Company\",\"url\":\"example-company\"}}}",
+      "headers": {
+        "wefunder-signature": "t=1705334400,v1=0385f3fa13024fc4d851034779083ea49483162d32b668d7646e2b94fccd84db"
+      },
+      "now": 1705334401,
+      "expect": {
+        "result": "ok",
+        "event": {
+          "id": "evt_0KZq8xExampleOpened01",
+          "event": "offering.opened",
+          "mode": "live",
+          "timestamp": 1705334400,
+          "data": {
+            "offering": "ofr_9m2ExampleRound00",
+            "status": "open",
+            "company": {
+              "name": "Example Company",
+              "url": "example-company"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "docs vector: single-byte body change is rejected",
+      "tolerance_seconds": 300,
+      "secret": "whsec_docvector_2f9c1a4b8e7d6c5a",
+      "payload": "{\"id\":\"evt_0KZq8xExampleOpened01\",\"event\":\"offering.opened\",\"created_at\":\"2026-01-15T12:00:00Z\",\"mode\":\"live\",\"data\":{\"offering\":\"ofr_9m2ExampleRound00\",\"status\":\"open\",\"company\":{\"name\":\"Example Company\",\"url\":\"example-c0mpany\"}}}",
+      "headers": {
+        "wefunder-signature": "t=1705334400,v1=0385f3fa13024fc4d851034779083ea49483162d32b668d7646e2b94fccd84db"
+      },
+      "now": 1705334401,
+      "expect": {
+        "result": "signature_mismatch"
+      }
+    },
+    {
+      "name": "valid header, 1s later",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+      },
+      "now": 1700000001,
+      "expect": {
+        "result": "ok",
+        "event": {
+          "id": "evt_1",
+          "event": "investment.created",
+          "mode": "live",
+          "timestamp": 1700000000
+        }
+      }
+    },
+    {
+      "name": "rotation window: ANY v1 matching is enough (verifier holds the NEW secret)",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=3f7fd42570830241547b0401202f9040308056e2930a381b33e2e706c5bd2091,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+      },
+      "now": 1700000001,
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "name": "rotation window: verifier holds the OLD secret",
+      "tolerance_seconds": 300,
+      "secret": "old-secret",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=3f7fd42570830241547b0401202f9040308056e2930a381b33e2e706c5bd2091,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+      },
+      "now": 1700000001,
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "name": "rotation window: neither secret matches",
+      "tolerance_seconds": 300,
+      "secret": "neither",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=3f7fd42570830241547b0401202f9040308056e2930a381b33e2e706c5bd2091,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+      },
+      "now": 1700000001,
+      "expect": {
+        "result": "signature_mismatch"
+      }
+    },
+    {
+      "name": "tampered body (trailing space)",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}} ",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+      },
+      "now": 1700000001,
+      "expect": {
+        "result": "signature_mismatch"
+      }
+    },
+    {
+      "name": "wrong secret",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=ff221ee174302d101417baded2e2783a8949eca0d8830fa862b7caba925b21e2"
+      },
+      "now": 1700000001,
+      "expect": {
+        "result": "signature_mismatch"
+      }
+    },
+    {
+      "name": "timestamp far in the past relative to now (replay)",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+      },
+      "now": 1700010000,
+      "expect": {
+        "result": "timestamp_out_of_tolerance"
+      }
+    },
+    {
+      "name": "timestamp in the future relative to now",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+      },
+      "now": 1699990000,
+      "expect": {
+        "result": "timestamp_out_of_tolerance"
+      }
+    },
+    {
+      "name": "default tolerance 300s: 299s is inside",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+      },
+      "now": 1700000299,
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "name": "default tolerance 300s: 301s is outside",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+      },
+      "now": 1700000301,
+      "expect": {
+        "result": "timestamp_out_of_tolerance"
+      }
+    },
+    {
+      "name": "custom tolerance 600s admits 301s",
+      "tolerance_seconds": 600,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+      },
+      "now": 1700000301,
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "name": "tolerance 0 disables the timestamp check",
+      "tolerance_seconds": 0,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+      },
+      "now": 1700010000,
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "name": "tolerance check runs BEFORE the HMAC: stale AND wrong secret reports out_of_tolerance",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=ff221ee174302d101417baded2e2783a8949eca0d8830fa862b7caba925b21e2"
+      },
+      "now": 1700010000,
+      "expect": {
+        "result": "timestamp_out_of_tolerance"
+      }
+    },
+    {
+      "name": "malformed header: garbage",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "garbage"
+      },
+      "now": 1700000000,
+      "expect": {
+        "result": "malformed_header"
+      }
+    },
+    {
+      "name": "malformed header: legacy sha256= shape in the new header",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "sha256=deadbeef"
+      },
+      "now": 1700000000,
+      "expect": {
+        "result": "malformed_header"
+      }
+    },
+    {
+      "name": "malformed header: non-integer t",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=abc,v1=zz"
+      },
+      "now": 1700000000,
+      "expect": {
+        "result": "malformed_header"
+      }
+    },
+    {
+      "name": "v1 of the wrong length never matches",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=ab"
+      },
+      "now": 1700000000,
+      "expect": {
+        "result": "signature_mismatch"
+      }
+    },
+    {
+      "name": "missing header",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "headers": {
+        "host": "example.com"
+      },
+      "now": 1700000000,
+      "expect": {
+        "result": "missing_header"
+      }
+    },
+    {
+      "name": "header name is case-insensitive",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_abc\",\"event\":\"investment.executed\",\"created_at\":\"2026-09-24T12:00:00Z\",\"mode\":\"test\",\"data\":{\"id\":\"inv_1\",\"status\":\"executed\",\"offering\":\"ofr_1\",\"amounts\":{\"committed\":50000},\"investor\":{\"id\":\"usr_1\",\"name\":\"Alex Example\"}}}",
+      "headers": {
+        "Wefunder-Signature": "t=1700000000,v1=ccc88edb1e2f74eb617b1731ee1fc61414710bdce921ca722c3ab55b09d58266"
+      },
+      "now": 1700000000,
+      "expect": {
+        "result": "ok",
+        "event": {
+          "id": "evt_abc",
+          "event": "investment.executed",
+          "mode": "test",
+          "timestamp": 1700000000,
+          "created_at": "2026-09-24T12:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "typed envelope: data passes through untouched",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_abc\",\"event\":\"investment.executed\",\"created_at\":\"2026-09-24T12:00:00Z\",\"mode\":\"test\",\"data\":{\"id\":\"inv_1\",\"status\":\"executed\",\"offering\":\"ofr_1\",\"amounts\":{\"committed\":50000},\"investor\":{\"id\":\"usr_1\",\"name\":\"Alex Example\"}}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=ccc88edb1e2f74eb617b1731ee1fc61414710bdce921ca722c3ab55b09d58266"
+      },
+      "now": 1700000000,
+      "expect": {
+        "result": "ok",
+        "event": {
+          "id": "evt_abc",
+          "event": "investment.executed",
+          "mode": "test",
+          "timestamp": 1700000000,
+          "data": {
+            "id": "inv_1",
+            "status": "executed",
+            "offering": "ofr_1",
+            "amounts": {
+              "committed": 50000
+            },
+            "investor": {
+              "id": "usr_1",
+              "name": "Alex Example"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "correctly signed non-JSON body → invalid_payload",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "not json at all",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=5b1042f89a82e10dfbe817b35da837d15083ff3290cbd3bc7677b888d95a1f99"
+      },
+      "now": 1700000000,
+      "expect": {
+        "result": "invalid_payload"
+      }
+    },
+    {
+      "name": "event name unknown to the SDK still verifies; data untyped",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_f\",\"event\":\"offering.renamed\",\"created_at\":\"x\",\"mode\":\"live\",\"data\":{\"k\":1}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=22e2caf114be6703b4525b9e2fa9bfae7aa57f3f8cbe9b2b3189ac4a8694c640"
+      },
+      "now": 1700000000,
+      "expect": {
+        "result": "ok",
+        "event": {
+          "id": "evt_f",
+          "event": "offering.renamed",
+          "mode": "live",
+          "timestamp": 1700000000,
+          "data": {
+            "k": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "mode defaults to live when the envelope omits it",
+      "tolerance_seconds": 300,
+      "secret": "whsec_test_abcdef0123456789",
+      "payload": "{\"id\":\"evt_m\",\"event\":\"offering.opened\",\"data\":{}}",
+      "headers": {
+        "wefunder-signature": "t=1700000000,v1=e0b47cc2c6523069dababeee4e30837c1e4902a29baad4f920550c7bebdb5b41"
+      },
+      "now": 1700000000,
+      "expect": {
+        "result": "ok",
+        "event": {
+          "id": "evt_m",
+          "event": "offering.opened",
+          "mode": "live",
+          "timestamp": 1700000000
+        }
+      }
+    }
+  ],
+  "parse_header": [
+    {
+      "header": "t=1700000000,v1=abc",
+      "expect": {
+        "timestamp": 1700000000,
+        "signatures": [
+          "abc"
+        ]
+      }
+    },
+    {
+      "header": "t=1,v1=aa,v1=bb,v2=future",
+      "expect": {
+        "timestamp": 1,
+        "signatures": [
+          "aa",
+          "bb"
+        ]
+      },
+      "note": "unknown keys ignored (forward compatible)"
+    },
+    {
+      "header": " t=5 , v1=zz ",
+      "expect": {
+        "timestamp": 5,
+        "signatures": [
+          "zz"
+        ]
+      },
+      "note": "whitespace tolerated"
+    },
+    {
+      "header": "v1=abc",
+      "expect": null
+    },
+    {
+      "header": "t=1700000000",
+      "expect": null
+    },
+    {
+      "header": "t=soon,v1=abc",
+      "expect": null
+    },
+    {
+      "header": "",
+      "expect": null
+    },
+    {
+      "header": "sha256=deadbeef",
+      "expect": null
+    }
+  ],
+  "sign": [
+    {
+      "name": "docs vector",
+      "secret": "whsec_docvector_2f9c1a4b8e7d6c5a",
+      "timestamp": 1705334400,
+      "payload": "{\"id\":\"evt_0KZq8xExampleOpened01\",\"event\":\"offering.opened\",\"created_at\":\"2026-01-15T12:00:00Z\",\"mode\":\"live\",\"data\":{\"offering\":\"ofr_9m2ExampleRound00\",\"status\":\"open\",\"company\":{\"name\":\"Example Company\",\"url\":\"example-company\"}}}",
+      "expect_header": "t=1705334400,v1=0385f3fa13024fc4d851034779083ea49483162d32b668d7646e2b94fccd84db"
+    },
+    {
+      "name": "single secret",
+      "secret": "whsec_test_abcdef0123456789",
+      "timestamp": 1700000000,
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "expect_header": "t=1700000000,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+    },
+    {
+      "name": "rotation: primary first, then each additional secret, in order",
+      "secret": "old-secret",
+      "additional_secrets": [
+        "whsec_test_abcdef0123456789"
+      ],
+      "timestamp": 1700000000,
+      "payload": "{\"id\":\"evt_1\",\"event\":\"investment.created\",\"data\":{\"id\":\"inv_1\"}}",
+      "expect_header": "t=1700000000,v1=3f7fd42570830241547b0401202f9040308056e2930a381b33e2e706c5bd2091,v1=884be2fac2b11b46f620ab0be1e150f239c402e6aa26b1fa62d89fd89453def0"
+    }
+  ]
+}

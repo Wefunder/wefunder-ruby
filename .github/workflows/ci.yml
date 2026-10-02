@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (ruby ${{ matrix.ruby }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.2", "3.3", "3.4"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - run: bundle exec rubocop
+      - run: bundle exec rspec --exclude-pattern "spec/e2e/**/*_spec.rb"
+      - run: gem build wefunder.gemspec
+
+  generated-in-sync:
+    name: generated code matches spec
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The committed lib/wefunder_generated must match what the pinned openapi-generator
+      # (Docker) emits from openapi/openapi.yaml. If this fails, run `script/generate` and
+      # commit the result.
+      - run: script/generate
+      - run: git diff --exit-code -- lib/wefunder_generated lib/wefunder_generated.rb
+
+  e2e:
+    name: live sandbox e2e
+    # Never on pull_request: keeps the sandbox secret away from fork PRs.
+    # Runs on push to main and manual dispatch; auto-skips if the secret is unset.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      WEFUNDER_CLIENT_ID: ${{ secrets.WEFUNDER_CLIENT_ID }}
+      WEFUNDER_CLIENT_SECRET: ${{ secrets.WEFUNDER_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - run: bundle exec rspec spec/e2e

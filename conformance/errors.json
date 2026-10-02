@@ -1,0 +1,113 @@
+{
+  "$schema_note": "Error envelope → typed error. Real runtime shape (api/v2/base_controller.rb#render_error): `{error:{type,message,details?,request_id,remediation?}}` — request_id and remediation are NESTED under `error`. request_id precedence: `X-Wf-Request-Id` response header > error.request_id > top-level request_id. Fallbacks when the body is not the envelope: type `api_error`, request_id from the header only. `message: null` in expect means 'any string' (HTTP status text is runtime-specific).",
+  "request_id_header": "X-Wf-Request-Id",
+  "fallback_type": "api_error",
+  "cases": [
+    {
+      "name": "full nested envelope",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"error\":{\"type\":\"validation_error\",\"message\":\"amount too low\",\"details\":{\"field\":\"amount\"},\"request_id\":\"req_xyz\",\"remediation\":\"Raise the amount to at least $100.\"}}",
+      "expect": {
+        "status": 422,
+        "type": "validation_error",
+        "message": "amount too low",
+        "request_id": "req_xyz",
+        "details": {
+          "field": "amount"
+        },
+        "remediation": "Raise the amount to at least $100."
+      }
+    },
+    {
+      "name": "top-level request_id fallback",
+      "status": 400,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"error\":{\"type\":\"x\",\"message\":\"y\"},\"request_id\":\"req_top\"}",
+      "expect": {
+        "status": 400,
+        "type": "x",
+        "message": "y",
+        "request_id": "req_top",
+        "details": null,
+        "remediation": null
+      }
+    },
+    {
+      "name": "header beats body request_id",
+      "status": 403,
+      "headers": {
+        "content-type": "application/json",
+        "x-wf-request-id": "req_header"
+      },
+      "body": "{\"error\":{\"type\":\"forbidden\",\"message\":\"no\",\"request_id\":\"req_body\"}}",
+      "expect": {
+        "status": 403,
+        "type": "forbidden",
+        "message": "no",
+        "request_id": "req_header"
+      }
+    },
+    {
+      "name": "non-JSON edge 502 keeps the header request_id",
+      "status": 502,
+      "headers": {
+        "content-type": "text/html",
+        "x-wf-request-id": "req_edge"
+      },
+      "body": "<html>502 Bad Gateway</html>",
+      "expect": {
+        "status": 502,
+        "type": "api_error",
+        "message": null,
+        "request_id": "req_edge",
+        "details": null,
+        "remediation": null
+      }
+    },
+    {
+      "name": "empty body, no header → fallbacks",
+      "status": 500,
+      "headers": {},
+      "body": "",
+      "expect": {
+        "status": 500,
+        "type": "api_error",
+        "message": null,
+        "request_id": null
+      }
+    },
+    {
+      "name": "insufficient_scope (a cc token calling /users/me)",
+      "status": 403,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"error\":{\"type\":\"insufficient_scope\",\"message\":\"This endpoint requires the read:profile scope\",\"request_id\":\"req_scope\",\"remediation\":\"Request the read:profile scope during authorization.\"}}",
+      "expect": {
+        "status": 403,
+        "type": "insufficient_scope",
+        "request_id": "req_scope",
+        "remediation": "Request the read:profile scope during authorization."
+      }
+    },
+    {
+      "name": "sandbox write refusal",
+      "status": 403,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"error\":{\"type\":\"manage_endpoints_on_live_api\",\"message\":\"Manage them through the live API\",\"request_id\":\"req_1\"}}",
+      "expect": {
+        "status": 403,
+        "type": "manage_endpoints_on_live_api",
+        "message": "Manage them through the live API",
+        "request_id": "req_1"
+      }
+    }
+  ]
+}

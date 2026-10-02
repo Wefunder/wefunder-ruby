@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Regenerate lib/wefunder_generated from openapi/openapi.yaml with the PINNED openapi-generator
+# (Docker; no Java on the host). The generated layer is committed; CI's generated-in-sync job
+# re-runs this and fails on any diff, so run it after script/sync_spec and commit both.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+GEN_VERSION="v7.10.0"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+cp openapi/openapi.yaml "$TMP/openapi.yaml"
+docker run --rm --user "$(id -u):$(id -g)" -v "$TMP:/local" "openapitools/openapi-generator-cli:$GEN_VERSION" generate \
+  -i /local/openapi.yaml -g ruby -o /local/out \
+  --additional-properties=gemName=wefunder_generated,moduleName=WefunderGenerated,library=faraday,gemVersion=0.0.0 \
+  >"$TMP/gen.log" 2>&1 || { cat "$TMP/gen.log"; exit 1; }
+rm -rf lib/wefunder_generated lib/wefunder_generated.rb
+cp -r "$TMP/out/lib/wefunder_generated" lib/
+cp "$TMP/out/lib/wefunder_generated.rb" lib/
+# openapi-generator emits one identical 'bearerAuth' entry per `security` alternative, which
+# Ruby reports as a duplicated hash key at require time. Collapse the duplicates.
+python3 - <<'PY'
+import re, pathlib
+p = pathlib.Path("lib/wefunder_generated/configuration.rb")
+s = p.read_text()
+block = re.compile(r"(        'bearerAuth' =>\n          \{\n(?:.*\n)*?          \},\n)")
+blocks = block.findall(s)
+if len(blocks) > 1 and len(set(blocks)) == 1:
+    s = s.replace(blocks[0] * len(blocks), blocks[0], 1)
+    p.write_text(s)
+PY
+ops=$(grep -c "operationId:" openapi/openapi.yaml || true)
+echo "generated lib/wefunder_generated from openapi/openapi.yaml ($ops public operations, openapi-generator $GEN_VERSION)"

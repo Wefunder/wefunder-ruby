@@ -1,0 +1,286 @@
+{
+  "$schema_note": "Token recovery through the full client. Two strategies chosen automatically: refresh_token ROTATION (a refresh token + client_id present) or client_credentials RE-MINT (client built from cc grant inputs; cc tokens carry no refresh token). Concurrent 401s MUST coalesce into one recovery. The rotated refresh token MUST be persisted (store + callback) before the retried request. If a refresh response omits refresh_token, keep the previous one. Proactive refresh when now >= expires_at - leeway (default 30000ms). `api` scripts: the fake API rejects `reject_bearer` with 401 and accepts anything else with `accept_body`.",
+  "default_expiry_leeway_ms": 30000,
+  "token_set_conversion": {
+    "$note": "OAuth token response → TokenSet. expires_at (ms) = now_ms + expires_in*1000; absent expires_in → no expiry.",
+    "cases": [
+      {
+        "raw": {
+          "access_token": "at_live_x",
+          "expires_in": 3600,
+          "token_type": "Bearer",
+          "scope": "read:public"
+        },
+        "now_ms": 1000,
+        "expect": {
+          "access_token": "at_live_x",
+          "refresh_token": null,
+          "expires_at_ms": 3601000,
+          "token_type": "Bearer",
+          "scope": "read:public"
+        }
+      },
+      {
+        "raw": {
+          "access_token": "at_test_x",
+          "refresh_token": "r1"
+        },
+        "now_ms": 1000,
+        "expect": {
+          "access_token": "at_test_x",
+          "refresh_token": "r1",
+          "expires_at_ms": null
+        }
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "name": "refresh rotation on 401",
+      "client": {
+        "tokens": {
+          "access_token": "at_live_OLD",
+          "refresh_token": "r1",
+          "expires_at_ms": 10000000000000
+        },
+        "client_id": "cid",
+        "client_secret": "sec"
+      },
+      "oauth_responses": [
+        {
+          "access_token": "at_live_NEW",
+          "refresh_token": "r2"
+        }
+      ],
+      "api": {
+        "reject_bearer": "Bearer at_live_OLD",
+        "accept_body": "{\"data\":{\"id\":99}}"
+      },
+      "concurrent_requests": 1,
+      "expect": {
+        "oauth_calls": 1,
+        "oauth_grant_types": [
+          "refresh_token"
+        ],
+        "oauth_params": [
+          {
+            "grant_type": "refresh_token",
+            "client_id": "cid",
+            "client_secret": "sec",
+            "refresh_token": "r1"
+          }
+        ],
+        "final_access_token": "at_live_NEW",
+        "final_refresh_token": "r2",
+        "persisted_refresh_tokens": [
+          "r2"
+        ],
+        "last_api_bearer": "Bearer at_live_NEW",
+        "result": "ok"
+      }
+    },
+    {
+      "name": "three concurrent 401s → ONE refresh",
+      "client": {
+        "tokens": {
+          "access_token": "at_live_OLD",
+          "refresh_token": "r1",
+          "expires_at_ms": 10000000000000
+        },
+        "client_id": "cid"
+      },
+      "oauth_responses": [
+        {
+          "access_token": "at_live_NEW",
+          "refresh_token": "r2"
+        }
+      ],
+      "api": {
+        "reject_bearer": "Bearer at_live_OLD",
+        "accept_body": "{\"data\":{\"ok\":true}}"
+      },
+      "concurrent_requests": 3,
+      "expect": {
+        "oauth_calls": 1,
+        "final_refresh_token": "r2",
+        "result": "ok"
+      }
+    },
+    {
+      "name": "401 with no refresh token and no cc grant → auth error (no OAuth call)",
+      "client": {
+        "tokens": {
+          "access_token": "at_live_x"
+        }
+      },
+      "oauth_responses": [],
+      "api": {
+        "reject_bearer": "Bearer at_live_x"
+      },
+      "concurrent_requests": 1,
+      "expect": {
+        "oauth_calls": 0,
+        "result": "error",
+        "error_status": 401
+      }
+    },
+    {
+      "name": "refresh response omitting refresh_token keeps the previous one",
+      "client": {
+        "tokens": {
+          "access_token": "at_live_OLD",
+          "refresh_token": "r1",
+          "expires_at_ms": 10000000000000
+        },
+        "client_id": "cid"
+      },
+      "oauth_responses": [
+        {
+          "access_token": "at_live_NEW"
+        }
+      ],
+      "api": {
+        "reject_bearer": "Bearer at_live_OLD",
+        "accept_body": "{\"data\":{\"ok\":true}}"
+      },
+      "concurrent_requests": 1,
+      "expect": {
+        "oauth_calls": 1,
+        "final_access_token": "at_live_NEW",
+        "final_refresh_token": "r1",
+        "result": "ok"
+      }
+    },
+    {
+      "name": "client_credentials re-mint on 401 (grant_type client_credentials, never refresh_token)",
+      "client": {
+        "client_credentials": {
+          "client_id": "c",
+          "client_secret": "s",
+          "scopes": [
+            "read:public"
+          ]
+        }
+      },
+      "oauth_responses": [
+        {
+          "access_token": "at_test_OLD",
+          "expires_in": 7200
+        },
+        {
+          "access_token": "at_test_NEW",
+          "expires_in": 7200
+        }
+      ],
+      "api": {
+        "reject_bearer": "Bearer at_test_OLD",
+        "accept_body": "{\"data\":[{\"id\":1}],\"meta\":{}}"
+      },
+      "concurrent_requests": 1,
+      "expect": {
+        "oauth_calls": 2,
+        "oauth_grant_types": [
+          "client_credentials",
+          "client_credentials"
+        ],
+        "oauth_params": [
+          {
+            "grant_type": "client_credentials",
+            "client_id": "c",
+            "client_secret": "s",
+            "scope": "read:public"
+          },
+          {
+            "grant_type": "client_credentials",
+            "client_id": "c",
+            "client_secret": "s",
+            "scope": "read:public"
+          }
+        ],
+        "final_access_token": "at_test_NEW",
+        "result": "ok"
+      }
+    },
+    {
+      "name": "three concurrent cc 401s → ONE re-mint (2 OAuth calls total incl. the initial mint)",
+      "client": {
+        "client_credentials": {
+          "client_id": "c",
+          "client_secret": "s"
+        }
+      },
+      "oauth_responses": [
+        {
+          "access_token": "at_test_OLD"
+        },
+        {
+          "access_token": "at_test_NEW"
+        }
+      ],
+      "api": {
+        "reject_bearer": "Bearer at_test_OLD",
+        "accept_body": "{\"data\":[],\"meta\":{}}"
+      },
+      "concurrent_requests": 3,
+      "expect": {
+        "oauth_calls": 2,
+        "final_access_token": "at_test_NEW",
+        "result": "ok"
+      }
+    },
+    {
+      "name": "proactive refresh: token inside the 30s leeway refreshes BEFORE the request (no 401 needed)",
+      "client": {
+        "tokens": {
+          "access_token": "at_live_OLD",
+          "refresh_token": "r1",
+          "expires_at_ms": 1029000
+        },
+        "client_id": "cid"
+      },
+      "now_ms": 1000000,
+      "oauth_responses": [
+        {
+          "access_token": "at_live_NEW",
+          "refresh_token": "r2",
+          "expires_in": 3600
+        }
+      ],
+      "api": {
+        "reject_bearer": "Bearer at_live_OLD",
+        "accept_body": "{\"data\":{\"ok\":true}}"
+      },
+      "concurrent_requests": 1,
+      "expect": {
+        "oauth_calls": 1,
+        "api_calls": 1,
+        "last_api_bearer": "Bearer at_live_NEW",
+        "final_refresh_token": "r2",
+        "result": "ok"
+      }
+    },
+    {
+      "name": "token outside the leeway is used as-is",
+      "client": {
+        "tokens": {
+          "access_token": "at_live_OK",
+          "refresh_token": "r1",
+          "expires_at_ms": 1031000
+        },
+        "client_id": "cid"
+      },
+      "now_ms": 1000000,
+      "oauth_responses": [],
+      "api": {
+        "accept_body": "{\"data\":{\"ok\":true}}"
+      },
+      "concurrent_requests": 1,
+      "expect": {
+        "oauth_calls": 0,
+        "api_calls": 1,
+        "last_api_bearer": "Bearer at_live_OK",
+        "result": "ok"
+      }
+    }
+  ]
+}

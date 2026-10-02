@@ -1,0 +1,12 @@
+{
+  "conformance_version": 1,
+  "files": {
+    "errors.json": "a696876ad2d77b0252eb7982f46bff1985a1f8c8afeddf68211fa8ee808bdd33",
+    "legacy_webhooks.json": "9a8efb4b82391ff1541a1717cae2b2f0e2dd4f0b8eeea7168777dd0f9741b7d6",
+    "oauth.json": "5d32808f12a0284108166f6f911e150a151d2e4c525d46b6487f51add7497959",
+    "pagination.json": "4ba011ae4c89f1065d162f06839fee0e16e19cca8211ca0ee45410138bb12a3c",
+    "retry.json": "44f8de8899a76300c346ebaf29c7263f79a59525cb57a3168fad45cb4fd8e04b",
+    "token_recovery.json": "a3609db7f88eed4072a0558fdc87496336cee5a9e40dcfd2b5dacf7c434fcf23",
+    "webhooks.json": "4dfccb2fcac0153046a03ba7b83d9b5a99786c69c699957e45d504c0a6c8e012"
+  }
+}
