@@ -3,7 +3,11 @@
 # Live sandbox E2E — needs WEFUNDER_CLIENT_ID / WEFUNDER_CLIENT_SECRET (a pk_test_ app). Excluded
 # from `rake spec`; run with `bundle exec rspec spec/e2e`. Asserts contract shape and paginator
 # invariants, not data (a fresh realm may have no offerings).
-RSpec.describe "live sandbox", if: ENV.fetch("WEFUNDER_CLIENT_ID", nil) && ENV.fetch("WEFUNDER_CLIENT_SECRET", nil) do
+# NOTE: unset GitHub Actions secrets arrive as EMPTY STRINGS, which are truthy in Ruby — test for
+# non-empty values or the suite runs with blank credentials and the gateway answers 400.
+creds_present = %w[WEFUNDER_CLIENT_ID WEFUNDER_CLIENT_SECRET].all? { |k| !ENV[k].to_s.empty? }
+
+RSpec.describe "live sandbox", if: creds_present do
   let(:wf) do
     Wefunder::Client.from_client_credentials(client_id: ENV.fetch("WEFUNDER_CLIENT_ID"),
                                              client_secret: ENV.fetch("WEFUNDER_CLIENT_SECRET"), scopes: ["read:public"])
