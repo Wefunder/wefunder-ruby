@@ -93,32 +93,35 @@ module Wefunder
 
     # Exchange an authorization code (+ PKCE verifier) for a token set. Public (PKCE) clients
     # omit +client_secret+; confidential clients pass it.
-    def exchange_code(client_id:, code:, redirect_uri:, code_verifier:, client_secret: nil, faraday: nil, now: nil, **hosts)
+    def exchange_code(client_id:, code:, redirect_uri:, code_verifier:, client_secret: nil, faraday: nil, now: nil, timeout: nil,
+                      **hosts)
       params = { grant_type: "authorization_code", client_id: client_id, code: code, redirect_uri: redirect_uri,
                  code_verifier: code_verifier }
       params[:client_secret] = client_secret if client_secret
-      post_token(resolve_token_base(**hosts), params, faraday, now)
+      post_token(resolve_token_base(**hosts), params, faraday, now, timeout)
     end
 
     # Mint an application token (server-to-server). cc tokens carry no refresh token.
-    def client_credentials_grant(client_id:, client_secret:, scopes: nil, faraday: nil, now: nil, **hosts)
+    def client_credentials_grant(client_id:, client_secret:, scopes: nil, faraday: nil, now: nil, timeout: nil, **hosts)
       params = { grant_type: "client_credentials", client_id: client_id, client_secret: client_secret }
       params[:scope] = Array(scopes).join(" ") if scopes && !Array(scopes).empty?
-      post_token(resolve_token_base(**hosts), params, faraday, now)
+      post_token(resolve_token_base(**hosts), params, faraday, now, timeout)
     end
 
     # Refresh an access token. CRITICAL: the result carries a NEW refresh token (rotation) —
     # persist it. Reusing the old one after rotation is a permanent 401.
-    def refresh_token(client_id:, refresh_token:, client_secret: nil, faraday: nil, now: nil, **hosts)
+    def refresh_token(client_id:, refresh_token:, client_secret: nil, faraday: nil, now: nil, timeout: nil, **hosts)
       params = { grant_type: "refresh_token", client_id: client_id, refresh_token: refresh_token }
       params[:client_secret] = client_secret if client_secret
-      post_token(resolve_token_base(**hosts), params, faraday, now)
+      post_token(resolve_token_base(**hosts), params, faraday, now, timeout)
     end
 
     # +faraday+ is an optional callable that configures the connection (tests inject an
-    # adapter: +->(conn) { conn.adapter :test, stubs }+).
-    def post_token(base, params, faraday, now)
+    # adapter: +->(conn) { conn.adapter :test, stubs }+). +timeout+ (seconds) covers the token
+    # round-trip so refreshes honour the client's timeout like every other call.
+    def post_token(base, params, faraday, now, timeout = nil)
       conn = Faraday.new do |c|
+        c.options.timeout = timeout if timeout
         faraday&.call(c)
         c.adapter Faraday.default_adapter unless faraday
       end

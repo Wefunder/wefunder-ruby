@@ -8,6 +8,7 @@ require_relative "../examples/install_target"
 RSpec.describe "examples/install_target.rb" do
   def api(create_response)
     seen = []
+    bodies = []
     handler = lambda do |env|
       seen << "#{env.method.to_s.upcase} #{env.url.path} #{env.request_headers["Authorization"]}"
       case env.url.path
@@ -21,12 +22,12 @@ RSpec.describe "examples/install_target.rb" do
       else raise "unexpected #{env.method} #{env.url.path}"
       end
     end
-    [seen, SpecSupport.faraday_for(handler)]
+    [seen, SpecSupport.faraday_for(handler), bodies]
   end
 
   it "already installed: 409 already_installed → mints for details.installation → deals request runs AS the install" do
-    seen, faraday = api(SpecSupport.json_response(409, { error: { type: "already_installed", message: "already",
-                                                                  details: { installation: "ins_existing" }, request_id: "r" } }))
+    seen, faraday, = api(SpecSupport.json_response(409, { error: { type: "already_installed", message: "already",
+                                                                   details: { installation: "ins_existing" }, request_id: "r" } }))
     wf = Wefunder::Client.new(access_token: "at_live_USER", faraday: faraday)
     deals = InstallTargetExample.example(wf, "syn_1", client_options: { faraday: faraday })
     expect(deals.data.map(&:id)).to eq(["deal_1"])

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
+require "time"
 require "uri"
 require "faraday"
 
@@ -36,11 +37,12 @@ module Wefunder
 
       _ = authorize_base_url # only /authorize uses it; see OAuth.create_authorization_url
       @mode = Wefunder.mode_for_token(token_set.access_token)
+      @timeout = timeout
       token_base = OAuth.resolve_token_base(token_base_url: token_base_url, oauth_base_url: oauth_base_url)
-      re_mint = build_re_mint(client_credentials, client_id, client_secret, token_base, faraday, now)
+      re_mint = build_re_mint(client_credentials, client_id, client_secret, token_base, faraday, now, timeout)
       @token_manager = TokenManager.new(token_set, client_id: client_id, client_secret: client_secret, re_mint: re_mint,
                                                    on_token_refresh: on_token_refresh, store: store, faraday: faraday, now: now,
-                                                   token_base_url: token_base)
+                                                   token_base_url: token_base, timeout: timeout)
       @api_client = build_api_client(base_url, api_version, retry_options, faraday, now, sleep, random, timeout)
       @raw = Raw.new(@api_client)
       @users = Users.new(self)
@@ -59,7 +61,8 @@ module Wefunder
     def self.from_client_credentials(client_id:, client_secret:, scopes: nil, **opts)
       tokens = OAuth.client_credentials_grant(
         client_id: client_id, client_secret: client_secret, scopes: scopes,
-        token_base_url: opts[:token_base_url], oauth_base_url: opts[:oauth_base_url], faraday: opts[:faraday], now: opts[:now]
+        token_base_url: opts[:token_base_url], oauth_base_url: opts[:oauth_base_url], faraday: opts[:faraday], now: opts[:now],
+        timeout: opts.fetch(:timeout, 30)
       )
       new(tokens: tokens, client_id: client_id, client_secret: client_secret, client_credentials: { scopes: scopes }, **opts)
     end
@@ -88,7 +91,8 @@ module Wefunder
       payload = body.nil? || body.is_a?(String) ? body : JSON.generate(body)
       hdrs = @api_client.default_headers.merge(headers || {})
       response = conn.run_request(method.to_s.downcase.to_sym, path, payload, hdrs) do |req|
-        req.params.update((query || {}).compact.transform_keys(&:to_s))
+        req.options.timeout = @timeout if @timeout # same timeout as the generated calls
+        req.params.update(Client.normalize_params((query || {}).compact).transform_keys(&:to_s))
       end
       if response.status >= 400
         raise Error.from_response(response.status, response.headers, response.body,
@@ -96,6 +100,22 @@ module Wefunder
       end
 
       response.body.to_s.empty? ? nil : JSON.parse(response.body)
+    rescue Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::SSLError => e
+      # Same shape the generated calls produce through `wrap` (ApiError with no code).
+      raise Error.new(status: 0, type: "network_error", message: e.message.to_s)
+    end
+
+    # Query values the API wants as ISO 8601: Time / DateTime → +iso8601+, Date → +YYYY-MM-DD+.
+    # Faraday would otherwise serialize a Time with +to_s+ ("2026-09-01 00:00:00 UTC"), which
+    # the server rejects with 400.
+    def self.normalize_params(opts)
+      opts.transform_values do |v|
+        case v
+        when Date then v.iso8601 # Date and DateTime (DateTime < Date)
+        when Time then v.utc.iso8601
+        else v
+        end
+      end
     end
 
     # Single-resource envelopes are +{data: Entity}+; return the entity for ergonomics.
@@ -107,13 +127,13 @@ module Wefunder
 
     private
 
-    def build_re_mint(client_credentials, client_id, client_secret, token_base, faraday, now)
+    def build_re_mint(client_credentials, client_id, client_secret, token_base, faraday, now, timeout)
       return nil unless client_credentials && client_id && client_secret
 
       scopes = client_credentials[:scopes] || client_credentials["scopes"]
       lambda do
         OAuth.client_credentials_grant(client_id: client_id, client_secret: client_secret, scopes: scopes,
-                                       token_base_url: token_base, faraday: faraday, now: now)
+                                       token_base_url: token_base, faraday: faraday, now: now, timeout: timeout)
       end
     end
 
@@ -172,9 +192,11 @@ module Wefunder
       def wrap(&) = @client.wrap(&)
       def raw = @client.raw
       def data_of(env) = Client.data_of(env)
+      def norm(opts) = Client.normalize_params(opts)
 
       # Auto-paginate a list method, keeping +opts+ on every page and threading the cursor.
       def pages(opts, &fetch)
+        opts = norm(opts)
         Wefunder.paginate { |cursor| wrap { fetch.call(cursor.nil? ? opts : opts.merge(cursor: cursor)) } }
       end
     end
@@ -186,7 +208,7 @@ module Wefunder
 
     class Offerings < Namespace
       # One page of GET /explore (+sort:+, +cursor:+, filters). Returns the envelope.
-      def list(**opts) = wrap { raw.explore.list_offerings(opts) }
+      def list(**opts) = wrap { raw.explore.list_offerings(norm(opts)) }
       # Every offering, lazily, +opts+ preserved across pages.
       def all(**opts) = pages(opts) { |o| raw.explore.list_offerings(o) }
       def get(offering_id) = data_of(wrap { raw.explore.get_offering(offering_id) })
@@ -196,7 +218,7 @@ module Wefunder
     # The Investment Delta API. +list+ without a cursor bootstraps; +next_cursor+ is always
     # present (persist it after every sync) and +has_more+ terminates.
     class Investments < Namespace
-      def list(**opts) = wrap { raw.investments.list_investments(opts) }
+      def list(**opts) = wrap { raw.investments.list_investments(norm(opts)) }
       def all(**opts) = pages(opts) { |o| raw.investments.list_investments(o) }
       def collect(**) = all(**).to_a
       def get(investment_id) = data_of(wrap { raw.investments.get_investment(investment_id) })
@@ -204,7 +226,7 @@ module Wefunder
 
     class Portfolio < Namespace
       Positions = Class.new(Namespace) do
-        def list(**opts) = wrap { raw.portfolio.list_portfolio_positions(opts) }
+        def list(**opts) = wrap { raw.portfolio.list_portfolio_positions(norm(opts)) }
         def all(**opts) = pages(opts) { |o| raw.portfolio.list_portfolio_positions(o) }
       end
 
@@ -216,19 +238,22 @@ module Wefunder
       end
 
       # The portfolio summary (+status:+, +company:+ filters).
-      def get(**opts) = data_of(wrap { raw.portfolio.get_portfolio(opts) })
+      def get(**opts) = data_of(wrap { raw.portfolio.get_portfolio(norm(opts)) })
     end
 
     class Campaigns < Namespace
-      def list(**opts) = wrap { raw.campaigns.list_campaigns(opts) }
+      def list(**opts) = wrap { raw.campaigns.list_campaigns(norm(opts)) }
       def all(**opts) = pages(opts) { |o| raw.campaigns.list_campaigns(o) }
     end
 
     class Syndicates < Namespace
-      def list(**opts) = wrap { raw.syndicates.list_syndicates(opts) }
+      def list(**opts) = wrap { raw.syndicates.list_syndicates(norm(opts)) }
       def all(**opts) = pages(opts) { |o| raw.syndicates.list_syndicates(o) }
       def get(syndicate_id) = data_of(wrap { raw.syndicates.get_syndicate(syndicate_id) })
-      def portfolio(syndicate_id, **opts) = data_of(wrap { raw.syndicate_portfolio.get_syndicate_portfolio(syndicate_id, opts) })
+
+      def portfolio(syndicate_id, **opts)
+        data_of(wrap { raw.syndicate_portfolio.get_syndicate_portfolio(syndicate_id, norm(opts)) })
+      end
 
       def portfolio_positions(syndicate_id, **opts)
         pages(opts) { |o| raw.syndicate_portfolio.list_syndicate_portfolio_positions(syndicate_id, o) }
@@ -236,7 +261,7 @@ module Wefunder
     end
 
     class Intents < Namespace
-      def list(**opts) = wrap { raw.intents.list_intents(opts) }
+      def list(**opts) = wrap { raw.intents.list_intents(norm(opts)) }
       def all(**opts) = pages(opts) { |o| raw.intents.list_intents(o) }
       def get(intent_id) = data_of(wrap { raw.intents.get_intent(intent_id) })
       def create(body) = data_of(wrap { raw.intents.create_intent(WefunderGenerated::CreateIntentRequest.new(body)) })

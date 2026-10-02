@@ -84,6 +84,11 @@ class TokenStore
 end
 ```
 
+The rotated set is saved **before** any thread can use it. If `store.save` raises, the SDK still
+switches to the new set in memory (the old refresh token is already dead) and raises
+`Wefunder::TokenPersistenceError`, whose `tokens` is the set that is live but not durable. Alert on it
+and retry the save; do not swallow it, or a restart will not be able to reconnect.
+
 Concurrent requests that hit a 401 at the same time share one refresh (the client is thread-safe).
 If several application instances can use the same OAuth connection, serialize refreshes for that
 connection yourself.
@@ -98,7 +103,7 @@ portfolio = wf.portfolio.get
 
 Namespaces: `users`, `offerings`, `investments`, `portfolio`, `campaigns`, `syndicates`, `intents`,
 `attribution`, and `webhook_endpoints`. Query parameters are keyword arguments; enum-typed ones take
-plain strings.
+plain strings, and `Time` / `DateTime` / `Date` values are sent as ISO 8601.
 
 `wf.investments` is the Investment Delta API. `list` without a cursor bootstraps; pass `updated_since:`
 or the `meta.next_cursor` you saved from your last page to receive only records that changed since then.
@@ -136,7 +141,11 @@ end
 
 The SDK retries idempotent `GET` requests after transient network errors, `5xx` responses, and rate
 limits (honouring `X-RateLimit-Reset`). Write requests are not retried automatically, except once after
-a `401` has been recovered.
+a `401` has been recovered. Exhausted network failures raise `Wefunder::Error` with `status` 0 and
+`type` `"network_error"`, from namespaces and `request` alike.
+
+`timeout:` (seconds, default 30) applies to every request the client makes: API calls, `request`, and
+the OAuth token round-trips for refresh and re-mint.
 
 ## Webhooks
 

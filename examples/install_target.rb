@@ -26,7 +26,10 @@ module InstallTargetExample
     rescue Wefunder::Error => e
       raise unless e.type == "already_installed" && e.details.is_a?(Hash) && e.details["installation"]
 
-      minted = wf.wrap { wf.raw.installations.create_installation_token(e.details["installation"]) }
+      mint = WefunderGenerated::CreateInstallationTokenRequest.new(scopes: ["read:syndicates"]) # same scopes as above
+      minted = wf.wrap do
+        wf.raw.installations.create_installation_token(e.details["installation"], create_installation_token_request: mint)
+      end
       installation_token = minted.token.access_token # shown once — store it
     end
 

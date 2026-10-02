@@ -8,6 +8,17 @@ module Wefunder
   # manager already holds a different one, another caller recovered in the meantime and the
   # current set is returned without a round-trip. The rotated set is persisted (store +
   # callback) BEFORE the retried request can use it. Thread-safe (Mutex).
+  # Raised when the token store failed to save a rotated token set. +tokens+ is the set that
+  # is now live in memory but NOT durable; +cause+ is the store's exception.
+  class TokenPersistenceError < StandardError
+    attr_reader :tokens
+
+    def initialize(tokens, cause)
+      super("Token store failed to save the rotated token set: #{cause.message}")
+      @tokens = tokens
+    end
+  end
+
   class TokenManager
     DEFAULT_EXPIRY_LEEWAY_SECONDS = 30.0
 
@@ -15,7 +26,7 @@ module Wefunder
 
     def initialize(tokens, client_id: nil, client_secret: nil, re_mint: nil, on_token_refresh: nil, store: nil,
                    faraday: nil, now: nil, expiry_leeway_seconds: DEFAULT_EXPIRY_LEEWAY_SECONDS,
-                   token_base_url: nil, oauth_base_url: nil)
+                   token_base_url: nil, oauth_base_url: nil, timeout: nil)
       @current = tokens
       @client_id = client_id
       @client_secret = client_secret
@@ -23,6 +34,7 @@ module Wefunder
       @on_token_refresh = on_token_refresh
       @store = store
       @faraday = faraday
+      @timeout = timeout
       @now = now || -> { Time.now.to_f }
       @leeway = expiry_leeway_seconds
       @token_base_url = OAuth.resolve_token_base(token_base_url: token_base_url, oauth_base_url: oauth_base_url)
@@ -50,7 +62,7 @@ module Wefunder
         nxt =
           if can_rotate?
             set = OAuth.refresh_token(client_id: @client_id, client_secret: @client_secret, refresh_token: previous_refresh,
-                                      token_base_url: @token_base_url, faraday: @faraday, now: @now)
+                                      token_base_url: @token_base_url, faraday: @faraday, now: @now, timeout: @timeout)
             # Some servers omit a fresh refresh_token on rotation-disabled flows; keep the old one.
             set.refresh_token ||= previous_refresh
             set
@@ -59,11 +71,23 @@ module Wefunder
           else
             raise AuthError, "Access token expired and no refresh token / re-mint capability is configured."
           end
+        persist(nxt)
         @current = nxt
-        @store&.save(nxt)
         @on_token_refresh&.call(nxt)
         nxt
       end
+    end
+
+    # Persist BEFORE publishing: no other thread may use the rotated token until it is durable,
+    # and a failed save must not leave the process working in memory but unable to reconnect
+    # after a restart. If the store raises we still have the only copy of the rotated refresh
+    # token (the old one is dead), so it is published anyway and the failure is surfaced as
+    # TokenPersistenceError — handle it (alert, retry the save with +error.tokens+), don't swallow it.
+    def persist(tokens)
+      @store&.save(tokens)
+    rescue StandardError => e
+      @current = tokens
+      raise TokenPersistenceError.new(tokens, e)
     end
 
     private
