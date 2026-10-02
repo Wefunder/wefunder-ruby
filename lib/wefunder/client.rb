@@ -70,6 +70,9 @@ module Wefunder
     # The current token set (rotated refresh token included).
     def tokens = @token_manager.current
 
+    # The TokenManager (for +mark_persisted!+ after handling a TokenPersistenceError).
+    attr_reader :token_manager
+
     # The generated APIs, one accessor per tag (+wf.raw.syndicate_members.list_syndicate_members(id)+).
     # Wrap calls in +wrap+ to get typed errors.
     attr_reader :raw

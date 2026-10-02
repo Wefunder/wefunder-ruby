@@ -84,10 +84,11 @@ class TokenStore
 end
 ```
 
-The rotated set is saved **before** any thread can use it. If `store.save` raises, the SDK still
-switches to the new set in memory (the old refresh token is already dead) and raises
-`Wefunder::TokenPersistenceError`, whose `tokens` is the set that is live but not durable. Alert on it
-and retry the save; do not swallow it, or a restart will not be able to reconnect.
+The rotated set is saved **before** any thread can use it. If `store.save` raises, the SDK raises
+`Wefunder::TokenPersistenceError` and keeps the rotated set *pending*: no request is made with it, the
+consumed refresh token is never reused, and the next call retries the save (or persist
+`error.tokens` yourself and call `wf.token_manager.mark_persisted!`). Alert on this error; a process
+that keeps failing to save cannot reconnect after a restart.
 
 Concurrent requests that hit a 401 at the same time share one refresh (the client is thread-safe).
 If several application instances can use the same OAuth connection, serialize refreshes for that
@@ -229,9 +230,12 @@ sends a fully-wrapped request and returns the decoded JSON.
 ```bash
 bundle install
 bundle exec rubocop
-bundle exec rspec                 # hermetic; spec/e2e is excluded by rake and CI on PRs
-bundle exec rspec spec/e2e        # live sandbox, with WEFUNDER_CLIENT_ID / WEFUNDER_CLIENT_SECRET
+bundle exec rspec                             # hermetic — live examples are tagged :e2e and filtered out
+WEFUNDER_E2E=1 bundle exec rspec spec/e2e     # live sandbox; also needs WEFUNDER_CLIENT_ID / WEFUNDER_CLIENT_SECRET
 ```
+
+The live group is opt-in by tag, not by path: without `WEFUNDER_E2E=1` it never runs, even when sandbox
+credentials happen to be exported in your shell.
 
 Generated files in `lib/wefunder_generated/` come from `openapi/openapi.yaml` via `script/generate`
 (openapi-generator in Docker; no Java needed) and are never edited by hand.
