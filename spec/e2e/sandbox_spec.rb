@@ -31,7 +31,7 @@ RSpec.describe "live sandbox", if: ENV.fetch("WEFUNDER_CLIENT_ID", nil) && ENV.f
 
   it "an unknown offering is a typed error" do
     expect { wf.offerings.get("ofr_doesnotexist000000") }.to raise_error(Wefunder::Error) { |e|
-      expect(e.status).to satisfy { |s| [404, 400].include?(s) }
+      expect(e.status).to(satisfy { |s| [404, 400].include?(s) })
       expect(e.request_id).not_to be_nil
     }
   end
