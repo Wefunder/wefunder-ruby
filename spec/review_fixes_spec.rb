@@ -34,68 +34,139 @@ RSpec.describe "review fixes (0.1.0.beta2)" do
     let(:oauth) { SpecSupport.faraday_for(->(_e) { SpecSupport.json_response(200, { access_token: "at_live_NEW", refresh_token: "r2" }) }) }
     let(:tokens) { Wefunder::TokenSet.new(access_token: "at_live_OLD", refresh_token: "r1") }
 
+    # Build a manager whose persistence runs through the store OR the callback (both are persistence paths).
+    def manager_with(path, oauth, tokens, &persist)
+      if path == :store
+        store = Object.new
+        store.define_singleton_method(:save, &persist)
+        Wefunder::TokenManager.new(tokens, client_id: "c", faraday: oauth, store: store)
+      else
+        Wefunder::TokenManager.new(tokens, client_id: "c", faraday: oauth, on_token_refresh: persist)
+      end
+    end
+
     it "the store sees the OLD token still current while saving" do
       observed = []
-      store = Object.new
-      manager = Wefunder::TokenManager.new(tokens, client_id: "c", faraday: oauth, store: store)
-      store.define_singleton_method(:save) { |set| observed << [set.access_token, manager.current.access_token] }
+      manager = nil
+      manager = manager_with(:store, oauth, tokens) { |set| observed << [set.access_token, manager.current.access_token] }
       manager.refresh
       expect(observed).to eq([%w[at_live_NEW at_live_OLD]])
       expect(manager.current.access_token).to eq("at_live_NEW")
     end
 
-    it "barrier: a concurrent reader blocked behind an in-flight save never sees the undurable token" do
-      entered = Queue.new
-      release = Queue.new
-      store = Object.new
-      store.define_singleton_method(:save) do |_set|
-        entered << true
-        release.pop # hold the save open until the test says so
+    %i[store callback].each do |path|
+      it "barrier (#{path}): a reader behind an in-flight #{path} save never sees the undurable token" do
+        entered = Queue.new
+        release = Queue.new
+        manager = manager_with(path, oauth, tokens) do |_set|
+          entered << true
+          release.pop
+        end
+        refresher = Thread.new { manager.refresh }
+        entered.pop
+        reader = Thread.new { manager.access_token }
+        sleep 0.05
+        expect(reader.alive?).to be(true)
+        expect(manager.current.access_token).to eq("at_live_OLD")
+        release << true
+        expect(refresher.value.access_token).to eq("at_live_NEW")
+        expect(reader.value).to eq("at_live_NEW")
       end
-      manager = Wefunder::TokenManager.new(tokens, client_id: "c", faraday: oauth, store: store)
-      refresher = Thread.new { manager.refresh }
-      entered.pop # thread A is inside store.save
-      reader = Thread.new { manager.access_token }
-      sleep 0.05
-      expect(reader.alive?).to be(true) # B waits on the lock instead of reading the pending set
-      expect(manager.current.access_token).to eq("at_live_OLD")
-      release << true
-      expect(refresher.value.access_token).to eq("at_live_NEW")
-      expect(reader.value).to eq("at_live_NEW") # B proceeds only after the save completed
+
+      it "failure (#{path}): a failing #{path} keeps the set pending, never uses it, and the next call retries" do
+        attempts = 0
+        manager = manager_with(path, oauth, tokens) do |_set|
+          attempts += 1
+          raise IOError, "disk full" if attempts == 1
+        end
+        expect { manager.refresh }.to raise_error(Wefunder::TokenPersistenceError) { |e|
+          expect(e.tokens.refresh_token).to eq("r2")
+          expect(e.message).to include("disk full")
+        }
+        expect(manager.current.access_token).to eq("at_live_OLD")
+        expect(manager.pending_tokens.access_token).to eq("at_live_NEW")
+        expect(manager.access_token).to eq("at_live_NEW")
+        expect(attempts).to eq(2)
+        expect(manager.pending_tokens).to be_nil
+      end
     end
 
-    it "a failing store keeps the rotated set pending, never uses it, and retries the save on the next call" do
-      attempts = 0
+    it "on_token_refresh runs before publication, after store.save" do
+      order = []
+      manager = nil
       store = Object.new
-      store.define_singleton_method(:save) do |_set|
-        attempts += 1
-        raise IOError, "disk full" if attempts == 1
-      end
-      manager = Wefunder::TokenManager.new(tokens, client_id: "c", faraday: oauth, store: store)
-      expect { manager.refresh }.to raise_error(Wefunder::TokenPersistenceError) { |e|
-        expect(e.tokens.refresh_token).to eq("r2")
-        expect(e.message).to include("disk full")
-      }
-      expect(manager.current.access_token).to eq("at_live_OLD") # not published
-      expect(manager.pending_tokens.access_token).to eq("at_live_NEW")
-      # Next call retries the save (no second rotation — the old refresh token is consumed) and publishes.
-      expect(manager.access_token).to eq("at_live_NEW")
-      expect(attempts).to eq(2)
-      expect(manager.pending_tokens).to be_nil
+      store.define_singleton_method(:save) { |_set| order << "save current=#{manager.current.access_token}" }
+      manager = Wefunder::TokenManager.new(tokens, client_id: "c", faraday: oauth, store: store,
+                                                   on_token_refresh: ->(_set) { order << "callback current=#{manager.current.access_token}" })
+      manager.refresh
+      expect(order).to eq(["save current=at_live_OLD", "callback current=at_live_OLD"])
     end
 
-    it "mark_persisted! publishes a pending set the caller saved out of band" do
+    it "mark_persisted! is bound to the exact set that was saved: a stale r2 ack cannot publish r3" do
+      mint = 0
+      rotating = SpecSupport.faraday_for(lambda do |_e|
+        mint += 1
+        SpecSupport.json_response(200, { access_token: "at_live_#{mint + 1}", refresh_token: "r#{mint + 1}" })
+      end)
+      fail_next = true
       store = Object.new
-      store.define_singleton_method(:save) { |_set| raise IOError, "disk full" }
-      manager = Wefunder::TokenManager.new(tokens, client_id: "c", faraday: oauth, store: store)
-      expect { manager.refresh }.to raise_error(Wefunder::TokenPersistenceError)
-      manager.mark_persisted!
-      expect(manager.current.access_token).to eq("at_live_NEW")
+      store.define_singleton_method(:save) do |_set|
+        return unless fail_next
+
+        fail_next = false
+        raise IOError, "down"
+      end
+      manager = Wefunder::TokenManager.new(tokens, client_id: "c", faraday: rotating, store: store)
+      err_a = nil
+      begin
+        manager.refresh # r1 -> r2, save fails; caller A holds err.tokens (r2) for an out-of-band save
+      rescue Wefunder::TokenPersistenceError => e
+        err_a = e
+      end
+      expect(err_a.tokens.refresh_token).to eq("r2")
+      expect(manager.access_token).to eq("at_live_2") # B retries persistence successfully (publishes r2)
+      fail_next = true
+      err_b = nil
+      begin
+        manager.refresh # r2 -> r3, save fails
+      rescue Wefunder::TokenPersistenceError => e
+        err_b = e
+      end
+      expect(err_b.tokens.refresh_token).to eq("r3")
+      expect(manager.mark_persisted!(err_a.tokens)).to be(false) # A's stale r2 ack must NOT publish r3
+      expect(manager.pending_tokens.refresh_token).to eq("r3")
+      expect(manager.current.refresh_token).to eq("r2")
+      expect(manager.mark_persisted!(err_b.tokens)).to be(true)
+      expect(manager.current.refresh_token).to eq("r3")
       expect(manager.pending_tokens).to be_nil
     end
   end
 
   describe "the default rspec command is hermetic (wefunder-ruby#5)" do
+    it "rake e2e sets WEFUNDER_E2E before RSpec runs (prerequisite, not a trailing action)" do
+      require "rake"
+      previous = ENV.fetch("WEFUNDER_E2E", nil)
+      ENV.delete("WEFUNDER_E2E")
+      captured = :not_run
+      app = Rake::Application.new
+      Rake.application = app
+      Rake.load_rakefile(File.join(SpecSupport::ROOT, "Rakefile"))
+      RSpec::Core::RakeTask.class_eval do
+        alias_method :__real_run_task, :run_task
+        define_method(:run_task) { |_verbose| captured = ENV.fetch("WEFUNDER_E2E", nil) } # no child process
+      end
+      begin
+        app["e2e"].invoke
+      ensure
+        RSpec::Core::RakeTask.class_eval do
+          alias_method :run_task, :__real_run_task
+          remove_method :__real_run_task
+        end
+        previous ? ENV["WEFUNDER_E2E"] = previous : ENV.delete("WEFUNDER_E2E")
+      end
+      expect(captured).to eq("1")
+    end
+
     it "filters the :e2e group out unless WEFUNDER_E2E=1, regardless of exported credentials" do
       out = Bundler.with_unbundled_env do
         env = { "WEFUNDER_CLIENT_ID" => "pk_test_dummy", "WEFUNDER_CLIENT_SECRET" => "sk_test_dummy", "WEFUNDER_E2E" => nil }

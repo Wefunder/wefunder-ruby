@@ -10,7 +10,7 @@ module Wefunder
   # callback) BEFORE the retried request can use it. Thread-safe (Mutex).
   # Raised when the token store failed to save a rotated token set. +tokens+ is the rotated
   # set that is NOT yet durable and NOT yet in use; the manager keeps it pending and retries
-  # the save on the next call (or persist it yourself and call +mark_persisted!+). Until it is
+  # the save on the next call (or persist it yourself and call +mark_persisted!(tokens)+). Until it is
   # saved no request is made with it — the consumed refresh token is never reused either.
   class TokenPersistenceError < StandardError
     attr_reader :tokens
@@ -58,15 +58,17 @@ module Wefunder
       @current.access_token
     end
 
-    # Tell the manager you persisted +pending_tokens+ yourself; publishes it.
-    def mark_persisted!
+    # Tell the manager you persisted +tokens+ (the set from a TokenPersistenceError) yourself.
+    # Publishes it only if it is still the pending set; a stale acknowledgment (the manager has
+    # since rotated again) is a no-op and returns false, so an older save can never publish a
+    # newer, unsaved set.
+    def mark_persisted!(tokens)
       @lock.synchronize do
-        return @current unless @pending_tokens
+        return false unless @pending_tokens && same_token_set?(@pending_tokens, tokens)
 
         @current = @pending_tokens
         @pending_tokens = nil
-        @on_token_refresh&.call(@current)
-        @current
+        true
       end
     end
 
@@ -107,13 +109,19 @@ module Wefunder
       tokens = @pending_tokens
       begin
         @store&.save(tokens)
+        # on_token_refresh is a persistence path too, so it runs BEFORE publication and a failure
+        # keeps the set pending exactly like a store failure.
+        @on_token_refresh&.call(tokens)
       rescue StandardError => e
         raise TokenPersistenceError.new(tokens, e)
       end
       @pending_tokens = nil
       @current = tokens
-      @on_token_refresh&.call(tokens)
       tokens
+    end
+
+    def same_token_set?(a, b)
+      a.access_token == b.access_token && a.refresh_token == b.refresh_token
     end
 
     def can_rotate?

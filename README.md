@@ -84,10 +84,10 @@ class TokenStore
 end
 ```
 
-The rotated set is saved **before** any thread can use it. If `store.save` raises, the SDK raises
+The rotated set is saved **before** any thread can use it. If `store.save` or `on_token_refresh` raises, the SDK raises
 `Wefunder::TokenPersistenceError` and keeps the rotated set *pending*: no request is made with it, the
 consumed refresh token is never reused, and the next call retries the save (or persist
-`error.tokens` yourself and call `wf.token_manager.mark_persisted!`). Alert on this error; a process
+`error.tokens` yourself and call `wf.token_manager.mark_persisted!(error.tokens)`; a stale acknowledgment after another rotation is a no-op). Alert on this error; a process
 that keeps failing to save cannot reconnect after a restart.
 
 Concurrent requests that hit a 401 at the same time share one refresh (the client is thread-safe).
