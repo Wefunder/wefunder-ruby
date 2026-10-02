@@ -8,8 +8,10 @@ module Wefunder
   # manager already holds a different one, another caller recovered in the meantime and the
   # current set is returned without a round-trip. The rotated set is persisted (store +
   # callback) BEFORE the retried request can use it. Thread-safe (Mutex).
-  # Raised when the token store failed to save a rotated token set. +tokens+ is the set that
-  # is now live in memory but NOT durable; +cause+ is the store's exception.
+  # Raised when the token store failed to save a rotated token set. +tokens+ is the rotated
+  # set that is NOT yet durable and NOT yet in use; the manager keeps it pending and retries
+  # the save on the next call (or persist it yourself and call +mark_persisted!(tokens)+). Until it is
+  # saved no request is made with it — the consumed refresh token is never reused either.
   class TokenPersistenceError < StandardError
     attr_reader :tokens
 
@@ -22,7 +24,9 @@ module Wefunder
   class TokenManager
     DEFAULT_EXPIRY_LEEWAY_SECONDS = 30.0
 
-    attr_reader :current
+    # The durable, in-use token set. A rotated set that could not be persisted is held in
+    # +pending_tokens+ instead until a save succeeds.
+    attr_reader :current, :pending_tokens
 
     def initialize(tokens, client_id: nil, client_secret: nil, re_mint: nil, on_token_refresh: nil, store: nil,
                    faraday: nil, now: nil, expiry_leeway_seconds: DEFAULT_EXPIRY_LEEWAY_SECONDS,
@@ -46,16 +50,35 @@ module Wefunder
       can_rotate? || !@re_mint.nil?
     end
 
-    # A valid access token, refreshing proactively if expired / within the leeway.
+    # A valid access token, refreshing proactively if expired / within the leeway. If a rotated
+    # set is pending persistence, the save is retried first — no request uses an undurable token.
     def access_token
+      @lock.synchronize { publish_pending! if @pending_tokens } if @pending_tokens # re-check under the lock
       refresh(stale_token: @current.access_token) if near_expiry? && can_refresh?
       @current.access_token
+    end
+
+    # Tell the manager you persisted +tokens+ (the set from a TokenPersistenceError) yourself.
+    # Publishes it only if it is still the pending set; a stale acknowledgment (the manager has
+    # since rotated again) is a no-op and returns false, so an older save can never publish a
+    # newer, unsaved set.
+    def mark_persisted!(tokens)
+      @lock.synchronize do
+        return false unless @pending_tokens && same_token_set?(@pending_tokens, tokens)
+
+        @current = @pending_tokens
+        @pending_tokens = nil
+        true
+      end
     end
 
     # Recover the token (after a 401 or proactively). If +stale_token+ is no longer the current
     # token, someone else already recovered and the current set is returned.
     def refresh(stale_token: nil)
       @lock.synchronize do
+        # A rotated set awaiting persistence: retry the save rather than rotating again (the
+        # old refresh token was consumed by that rotation).
+        return publish_pending! if @pending_tokens
         return @current if stale_token && @current.access_token != stale_token
 
         previous_refresh = @current.refresh_token
@@ -71,26 +94,35 @@ module Wefunder
           else
             raise AuthError, "Access token expired and no refresh token / re-mint capability is configured."
           end
-        persist(nxt)
-        @current = nxt
-        @on_token_refresh&.call(nxt)
-        nxt
+        @pending_tokens = nxt
+        publish_pending!
       end
     end
 
-    # Persist BEFORE publishing: no other thread may use the rotated token until it is durable,
-    # and a failed save must not leave the process working in memory but unable to reconnect
-    # after a restart. If the store raises we still have the only copy of the rotated refresh
-    # token (the old one is dead), so it is published anyway and the failure is surfaced as
-    # TokenPersistenceError — handle it (alert, retry the save with +error.tokens+), don't swallow it.
-    def persist(tokens)
-      @store&.save(tokens)
-    rescue StandardError => e
+    private
+
+    # Persist BEFORE publishing (caller holds the lock): no thread may use the rotated token
+    # until it is durable, and a failed save must not leave the process working in memory but
+    # unable to reconnect after a restart. On failure the set stays in +pending_tokens+ and
+    # TokenPersistenceError is raised; the next call retries the save.
+    def publish_pending!
+      tokens = @pending_tokens
+      begin
+        @store&.save(tokens)
+        # on_token_refresh is a persistence path too, so it runs BEFORE publication and a failure
+        # keeps the set pending exactly like a store failure.
+        @on_token_refresh&.call(tokens)
+      rescue StandardError => e
+        raise TokenPersistenceError.new(tokens, e)
+      end
+      @pending_tokens = nil
       @current = tokens
-      raise TokenPersistenceError.new(tokens, e)
+      tokens
     end
 
-    private
+    def same_token_set?(a, b)
+      a.access_token == b.access_token && a.refresh_token == b.refresh_token
+    end
 
     def can_rotate?
       !@current.refresh_token.nil? && !@current.refresh_token.empty? && !@client_id.nil?

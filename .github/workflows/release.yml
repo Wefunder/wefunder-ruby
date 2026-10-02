@@ -41,5 +41,5 @@ jobs:
             exit 1
           fi
       # The release gate: same checks as CI.
-      - run: bundle exec rubocop && bundle exec rspec --exclude-pattern "spec/e2e/**/*_spec.rb"
+      - run: bundle exec rubocop && bundle exec rspec
       - uses: rubygems/release-gem@v1

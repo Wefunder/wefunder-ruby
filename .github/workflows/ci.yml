@@ -28,7 +28,7 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
       - run: bundle exec rubocop
-      - run: bundle exec rspec --exclude-pattern "spec/e2e/**/*_spec.rb"
+      - run: bundle exec rspec
       - run: gem build wefunder.gemspec
 
   generated-in-sync:
@@ -51,6 +51,7 @@ jobs:
     env:
       WEFUNDER_CLIENT_ID: ${{ secrets.WEFUNDER_CLIENT_ID }}
       WEFUNDER_CLIENT_SECRET: ${{ secrets.WEFUNDER_CLIENT_SECRET }}
+      WEFUNDER_E2E: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1

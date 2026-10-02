@@ -47,6 +47,9 @@ module SpecSupport
 end
 
 RSpec.configure do |config|
+  # Live sandbox examples are tagged :e2e and opt-in: `WEFUNDER_E2E=1 bundle exec rspec spec/e2e`.
+  # A plain `bundle exec rspec` stays offline even when sandbox credentials happen to be exported.
+  config.filter_run_excluding e2e: true unless ENV["WEFUNDER_E2E"] == "1"
   config.disable_monkey_patching!
   config.order = :random
   config.expect_with(:rspec) { |c| c.syntax = :expect }
