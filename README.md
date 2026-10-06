@@ -103,8 +103,12 @@ portfolio = wf.portfolio.get
 ```
 
 Namespaces: `users`, `offerings`, `investments`, `portfolio`, `campaigns`, `syndicates`, `intents`,
-`attribution`, and `webhook_endpoints`. Query parameters are keyword arguments; enum-typed ones take
-plain strings, and `Time` / `DateTime` / `Date` values are sent as ISO 8601.
+`attribution`, `installations`, and `webhook_endpoints`. Query parameters are keyword arguments;
+enum-typed ones take plain strings, and `Time` / `DateTime` / `Date` values are sent as ISO 8601.
+
+`wf.installations` lets your app act as a company or syndicate: `eligible_targets`, `create`,
+`mint_token`, `list`, `get`, `revoke`, and `install_or_mint_token`, which handles the API's 409
+`already_installed` answer by minting a token for the existing install with the same scopes.
 
 `wf.investments` is the Investment Delta API. `list` without a cursor bootstraps; pass `updated_since:`
 or the `meta.next_cursor` you saved from your last page to receive only records that changed since then.

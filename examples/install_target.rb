@@ -11,27 +11,17 @@ module InstallTargetExample
     # region guides/install-target
     # 1. Which companies / syndicates may this user install on? (Only those — an investor's
     #    empty list is not a failure.)
-    targets = wf.wrap { wf.raw.installations.list_eligible_install_targets(target_type: "syndicate") }
-    targets.data.each { |t| puts "#{t.id} #{t.name}#{" (already installed)" if t.installed}" }
+    wf.installations.eligible_targets(target_type: "syndicate").each do |t|
+      puts "#{t.id} #{t.name}#{" (already installed)" if t.installed}"
+    end
 
     # 2. Install. The response carries the install (`data`) AND its token. If the app is already
-    #    installed here the API answers 409 `already_installed` — its details["installation"] is
-    #    the existing install's id, so mint a fresh token for that instead. Any other error
-    #    (revoked install, missing scope) still raises.
-    begin
-      body = WefunderGenerated::CreateInstallationRequest.new(target_type: "syndicate", target_id: syndicate_id,
-                                                              scopes: ["read:syndicates"])
-      installed = wf.wrap { wf.raw.installations.create_installation(body) }
-      installation_token = installed.token.access_token
-    rescue Wefunder::Error => e
-      raise unless e.type == "already_installed" && e.details.is_a?(Hash) && e.details["installation"]
-
-      mint = WefunderGenerated::CreateInstallationTokenRequest.new(scopes: ["read:syndicates"]) # same scopes as above
-      minted = wf.wrap do
-        wf.raw.installations.create_installation_token(e.details["installation"], create_installation_token_request: mint)
-      end
-      installation_token = minted.token.access_token # shown once — store it
-    end
+    #    installed here the API answers 409 `already_installed`; install_or_mint_token mints a
+    #    fresh token for that existing install instead, re-requesting the same scopes. Any other
+    #    error (revoked install, missing scope) still raises.
+    installed = wf.installations.install_or_mint_token(target_type: "syndicate", target_id: syndicate_id,
+                                                       scopes: ["read:syndicates"])
+    installation_token = installed.token.access_token # shown once — store it
 
     # 3. First request AS the installation.
     as_syndicate = Wefunder::Client.new(access_token: installation_token, **client_options)

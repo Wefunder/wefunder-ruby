@@ -26,7 +26,7 @@ module Wefunder
   # typed-error unwrapping, and lazy auto-pagination. +raw+ exposes every generated API.
   class Client
     attr_reader :mode, :users, :offerings, :investments, :portfolio, :campaigns, :syndicates, :intents,
-                :attribution, :webhook_endpoints
+                :attribution, :installations, :webhook_endpoints
 
     def initialize(access_token: nil, tokens: nil, client_id: nil, client_secret: nil, client_credentials: nil,
                    api_version: DEFAULT_API_VERSION, base_url: DEFAULT_API_BASE_URL, authorize_base_url: nil,
@@ -53,6 +53,7 @@ module Wefunder
       @syndicates = Syndicates.new(self)
       @intents = Intents.new(self)
       @attribution = Attribution.new(self)
+      @installations = Installations.new(self)
       @webhook_endpoints = WebhookEndpoints.new(self)
     end
 
@@ -273,6 +274,54 @@ module Wefunder
 
     class Attribution < Namespace
       def me = data_of(wrap { raw.attribution_partners.get_attribution_me })
+    end
+
+    # /installations (read:installations / write:installations; write does not imply read). An
+    # install lets your app act AS a company or syndicate: +create+ and +mint_token+ return the
+    # envelope whose +token.access_token+ is a company-owned token (shown once, no expiry, no
+    # refresh) — build a second client with it. Installing is also what makes a company or
+    # syndicate an audience for your webhooks.
+    class Installations < Namespace
+      # Companies / syndicates the token's user may install your app on (empty for an investor).
+      def eligible_targets(target_type: nil)
+        opts = target_type ? { target_type: target_type } : {}
+        data_of(wrap { raw.installations.list_eligible_install_targets(opts) }) || []
+      end
+
+      # Every install of your app; the envelope (+meta.count+).
+      def list = wrap { raw.installations.list_installations }
+      def get(installation_id) = data_of(wrap { raw.installations.get_installation(installation_id) })
+
+      # Install on a target (+target_type:+, +target_id:+, optional +scopes:+ / +tier:+). Returns the
+      # envelope: +data+ is the install, +token.access_token+ the one-time token. If the app is
+      # already installed there the API answers 409 +already_installed+ with
+      # +details["installation"]+ = the existing id; see +install_or_mint_token+.
+      def create(**attrs)
+        wrap { raw.installations.create_installation(WefunderGenerated::CreateInstallationRequest.new(attrs)) }
+      end
+
+      # A fresh company-owned token for an existing install. +scopes+ narrows within the install's
+      # ceiling; omit for the ceiling. An explicit +[]+ grants nothing, so only nil omits the body.
+      def mint_token(installation_id, scopes = nil)
+        opts = {}
+        opts[:create_installation_token_request] = WefunderGenerated::CreateInstallationTokenRequest.new(scopes: scopes) if scopes
+        wrap { raw.installations.create_installation_token(installation_id, opts) }
+      end
+
+      # +create+, falling back to +mint_token+ for the existing install on 409 +already_installed+.
+      # The mint re-requests +scopes+ so a retry never widens the grant. Any other error (revoked
+      # install, missing scope) still raises.
+      def install_or_mint_token(**attrs)
+        create(**attrs)
+      rescue Wefunder::Error => e
+        existing_id = e.details["installation"] if e.type == "already_installed" && e.details.is_a?(Hash)
+        raise unless existing_id.is_a?(String) && !existing_id.empty?
+
+        mint_token(existing_id, attrs[:scopes])
+      end
+
+      # Revoke an install: its tokens stop working at once. Returns the install, now +revoked+.
+      def revoke(installation_id) = data_of(wrap { raw.installations.revoke_installation(installation_id) })
     end
 
     # Endpoints belong to your application and are managed through the LIVE API
