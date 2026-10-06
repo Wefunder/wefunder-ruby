@@ -96,6 +96,18 @@ RSpec.describe Wefunder::Client::Installations do
     expect(JSON.parse(seen[1].body)).to eq("scopes" => ["read:syndicates"])
   end
 
+  it "install_or_mint_token: string-keyed attrs (JSON.parse) re-request the same scopes, including []" do
+    seen, faraday = recorder { |req| already_installed(req) }
+    wf = client(faraday)
+    wf.installations.install_or_mint_token(**JSON.parse('{"target_type":"syndicate","target_id":"syn_1","scopes":[]}'))
+    wf.installations.install_or_mint_token(**{ "target_type" => "syndicate", "target_id" => "syn_1",
+                                               "scopes" => ["read:syndicates"] })
+    expect(seen.map(&:path)).to eq(["/installations", "/installations/ins_existing/tokens"] * 2)
+    expect(JSON.parse(seen[0].body)).to eq("target_type" => "syndicate", "target_id" => "syn_1", "scopes" => [])
+    expect(JSON.parse(seen[1].body)).to eq("scopes" => []) # an explicit [] stays [] — never the ceiling
+    expect(JSON.parse(seen[3].body)).to eq("scopes" => ["read:syndicates"])
+  end
+
   it "install_or_mint_token: a fresh install returns the create response without a second call" do
     seen, faraday = recorder do |_|
       SpecSupport.json_response(201, { data: INSTALL, token: { access_token: "at_live_NEW" } })

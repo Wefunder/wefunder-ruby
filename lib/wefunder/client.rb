@@ -297,6 +297,7 @@ module Wefunder
       # already installed there the API answers 409 +already_installed+ with
       # +details["installation"]+ = the existing id; see +install_or_mint_token+.
       def create(**attrs)
+        attrs = attrs.transform_keys(&:to_sym)
         wrap { raw.installations.create_installation(WefunderGenerated::CreateInstallationRequest.new(attrs)) }
       end
 
@@ -312,6 +313,9 @@ module Wefunder
       # The mint re-requests +scopes+ so a retry never widens the grant. Any other error (revoked
       # install, missing scope) still raises.
       def install_or_mint_token(**attrs)
+        # Normalize once so the fallback re-requests exactly what create sent — string-keyed
+        # attrs (e.g. from JSON.parse) must not turn a restricted or empty grant into the ceiling.
+        attrs = attrs.transform_keys(&:to_sym)
         create(**attrs)
       rescue Wefunder::Error => e
         existing_id = e.details["installation"] if e.type == "already_installed" && e.details.is_a?(Hash)
