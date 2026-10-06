@@ -17,12 +17,12 @@ Requires Ruby 3.2+.
 ## Install
 
 ```bash
-gem install wefunder --pre
+gem install wefunder
 # or in a Gemfile:
-gem "wefunder", "~> 0.1.0.beta"
+gem "wefunder", "~> 1.0"
 ```
 
-`--pre` is needed while the SDK is in beta (pre-release gems are not selected by default).
+The SDK follows semantic versioning from `1.0.0`: breaking changes only in a new major version, announced in the changelog.
 
 ## Authentication
 

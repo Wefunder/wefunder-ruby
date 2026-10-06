@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.version = Wefunder::VERSION
   spec.authors = ["Wefunder"]
   spec.email = ["api@wefunder.com"]
-  spec.summary = "Official Ruby SDK for the Wefunder API (beta)"
+  spec.summary = "Official Ruby SDK for the Wefunder API"
   spec.description = "Client for the Wefunder API: OAuth (PKCE + client credentials) with refresh rotation, " \
                      "retries, auto-pagination, typed errors, and webhook verification."
   spec.homepage = "https://github.com/Wefunder/wefunder-ruby"

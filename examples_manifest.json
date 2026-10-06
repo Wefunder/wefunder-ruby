@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "lang": "Ruby",
   "label": "wefunder",
-  "sdkVersion": "0.1.0.beta4",
+  "sdkVersion": "1.0.0",
   "apiVersion": "2025-01-15",
   "generatedBy": "script/build_examples_manifest.rb",
   "samples": {
