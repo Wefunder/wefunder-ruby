@@ -7,7 +7,7 @@ require "wefunder"
 module RevokeInstallationExample
   def self.example(wf)
     # region revokeInstallation
-    revoked = wf.installations.revoke("ins_9t2xExample")
+    revoked = wf.installations.revoke("inst_7hQExampleInstall01")
     puts revoked.attributes.status # "revoked"
     # endregion
     revoked
