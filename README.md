@@ -138,7 +138,7 @@ API failures raise `Wefunder::Error`:
 
 ```ruby
 begin
-  wf.syndicates.get("syn_example")
+  wf.syndicates.get("syn_aB3xQ9k2vF8mNp1zT5wY7Qc4")
 rescue Wefunder::Error => e
   puts e.status, e.type, e.message, e.request_id, e.remediation
 end
@@ -223,7 +223,7 @@ generated under `WefunderGenerated::<Tag>Api` and reachable through `wf.raw.<tag
 the same auth, retries, and typed errors:
 
 ```ruby
-members = wf.wrap { wf.raw.syndicate_members.list_syndicate_members("syn_example") }
+members = wf.wrap { wf.raw.syndicate_members.list_syndicate_members("syn_aB3xQ9k2vF8mNp1zT5wY7Qc4") }
 ```
 
 For a path the generated layer does not know yet, `wf.request(:get, path, query:, body:, headers:)`
