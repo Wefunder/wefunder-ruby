@@ -7,7 +7,7 @@
 require "wefunder"
 
 module InstallTargetExample
-  def self.example(wf, syndicate_id = "syn_abc123Example", client_options: {})
+  def self.example(wf, syndicate_id = "syn_aB3xQ9k2vF8mNp1zT5wY7Qc4", client_options: {})
     # region guides/install-target
     # 1. Which companies / syndicates may this user install on? (Only those — an investor's
     #    empty list is not a failure.)

@@ -7,7 +7,7 @@ require "wefunder"
 module CreateInstallationTokenExample
   def self.example(wf)
     # region createInstallationToken
-    minted = wf.installations.mint_token("ins_9t2xExample", ["read:investments"])
+    minted = wf.installations.mint_token("inst_7hQExampleInstall01", ["read:investments"])
     puts minted.token.access_token # shown once — store it
     # endregion
     minted
