@@ -161,10 +161,13 @@ rescue Wefunder::Error => e
 end
 ```
 
-The SDK retries idempotent `GET` requests after transient network errors, `5xx` responses, and rate
-limits (honouring `X-RateLimit-Reset`). Write requests are not retried automatically, except once after
-a `401` has been recovered. Exhausted network failures raise `Wefunder::Error` with `status` 0 and
-`type` `"network_error"`, from namespaces and `request` alike.
+Retries are bounded (`retry_options:` `max_retries`, default 2) and differ by failure: a `429` is
+retried for any method after waiting out `X-RateLimit-Reset`; transient network errors and `5xx`
+responses are retried only for idempotent methods (`GET`, `HEAD`, `OPTIONS`); a `401` is recovered
+once, for any method, by refreshing or re-minting the token and resending. Size request timeouts with
+the rate-limit wait in mind, since a rate-limited write can be attempted up to three times. Exhausted
+network failures raise `Wefunder::Error` with `status` 0 and `type` `"network_error"`, from namespaces
+and `request` alike.
 
 `timeout:` (seconds, default 30) applies to every request the client makes: API calls, `request`, and
 the OAuth token round-trips for refresh and re-mint.
