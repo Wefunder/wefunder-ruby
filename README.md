@@ -1,7 +1,6 @@
 # wefunder
 
-Official Ruby SDK for the [Wefunder API](https://docs.wefunder.com). **Beta** — the API is pre-launch
-and `0.x` releases may include breaking changes.
+Official Ruby SDK for the [Wefunder API](https://docs.wefunder.com).
 
 - A `Wefunder::Client` on [Faraday](https://lostisland.github.io/faraday/) with a generated, typed
   layer for every public operation
@@ -120,6 +119,14 @@ enum-typed ones take plain strings, and `Time` / `DateTime` / `Date` values are 
 `mint_token`, `list`, `get`, `revoke`, and `install_or_mint_token`, which handles the API's 409
 `already_installed` answer by minting a token for the existing install with the same scopes.
 
+`wf.member_links` mints your app's per-person links to one deal page and reports what each member did
+(`list`, `all`, `create`, `get`, `cancel`; needs a company- or syndicate-owned token). `wf.referral_codes`
+(beta) creates codes with your server key and reads per-company stats (`list`, `all`, `get`, `create`,
+`update`, `stats`). `wf.join_sessions` (beta) mints hosted syndicate join sessions (`list`, `all`, `get`,
+`create`; the API publishes no schema for these yet, so they come back as string-keyed Hashes), and
+`wf.investment_sessions` (beta) puts a known investor straight into checkout for one offering (`list`,
+`all`, `list_for_offering`, `all_for_offering`, `get`, `create`, `cancel`).
+
 `wf.investments` is the Investment Delta API. `list` without a cursor bootstraps; pass `updated_since:`
 or the `meta.next_cursor` you saved from your last page to receive only records that changed since then.
 `next_cursor` is always present, even on the final page, so persist it after every sync.
@@ -154,10 +161,14 @@ rescue Wefunder::Error => e
 end
 ```
 
-The SDK retries idempotent `GET` requests after transient network errors, `5xx` responses, and rate
-limits (honouring `X-RateLimit-Reset`). Write requests are not retried automatically, except once after
-a `401` has been recovered. Exhausted network failures raise `Wefunder::Error` with `status` 0 and
-`type` `"network_error"`, from namespaces and `request` alike.
+Retries are bounded (`retry_options:` `max_retries`, default 2) and differ by failure: a `429` is
+retried for any method after waiting out `X-RateLimit-Reset`; transient network errors and `5xx`
+responses are retried only for idempotent methods (`GET`, `HEAD`, `OPTIONS`); a `401` is recovered
+once, for any method, by refreshing or re-minting the token and resending. Size request timeouts with
+the rate-limit wait in mind, since rate limiting alone can attempt a write up to three times, and the
+one-time 401 recovery can add one more. Exhausted
+network failures raise `Wefunder::Error` with `status` 0 and `type` `"network_error"`, from namespaces
+and `request` alike.
 
 `timeout:` (seconds, default 30) applies to every request the client makes: API calls, `request`, and
 the OAuth token round-trips for refresh and re-mint.
@@ -279,12 +290,13 @@ Commit the specification and generated client together.
 
 ### Releasing
 
-Set the version in `lib/wefunder/version.rb` (e.g. `0.1.0.beta2`), rebuild `examples_manifest.json`,
-commit, then:
+Set the version in `lib/wefunder/version.rb` (e.g. `1.1.0`; a prerelease is `1.2.0.beta1`), run
+`bundle install` so `Gemfile.lock` follows, rebuild `examples_manifest.json`, commit, then:
 
 ```bash
-git tag v0.1.0.beta2
-git push --follow-tags
+git push origin main
+git tag v1.1.0
+git push origin v1.1.0      # push the tag explicitly: `--follow-tags` only pushes annotated tags
 ```
 
 The release workflow verifies the tag, runs the checks, and publishes to RubyGems via trusted publishing.
