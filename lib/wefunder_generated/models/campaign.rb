@@ -38,7 +38,7 @@ module WefunderGenerated
     # Attribute type mapping.
     def self.openapi_types
       {
-        :'id' => :'Integer',
+        :'id' => :'String',
         :'type' => :'String',
         :'attributes' => :'CampaignAttributes'
       }

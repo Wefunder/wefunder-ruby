@@ -24,7 +24,7 @@ RSpec.describe Wefunder::Client do
     wf = described_class.new(access_token: "at_test_x", faraday: faraday)
     me = wf.users.me
     expect(seen.first.path).to eq("/users/me")
-    expect(seen.first.headers["Wefunder-Version"]).to eq("2025-01-15")
+    expect(seen.first.headers["Wefunder-Version"]).to eq("2026-10-15")
     expect(seen.first.headers["Authorization"]).to eq("Bearer at_test_x")
     expect(wf.mode).to eq("test")
     expect(me.id).to eq("usr_1")
@@ -103,7 +103,7 @@ RSpec.describe Wefunder::Client do
     expect(out).to eq("echo" => { "a" => 1 }, "path" => "/partner/spvs", "q" => { "dry_run" => "1" })
     expect(seen.first.headers["Idempotency-Key"]).to eq("k1")
     expect(seen.first.headers["Authorization"]).to eq("Bearer at_test_x")
-    expect(seen.first.headers["Wefunder-Version"]).to eq("2025-01-15")
+    expect(seen.first.headers["Wefunder-Version"]).to eq("2026-10-15")
   end
 
   it "request raises a typed error" do

@@ -25,7 +25,10 @@ module WefunderGenerated
     # Net income / total assets × 100.
     attr_accessor :return_on_assets_percent
 
-    # (Short-term + long-term debt) / total assets × 100.
+    # (Current + non-current liabilities) / total assets × 100. Liabilities, not debt — see `current_liabilities`.
+    attr_accessor :liabilities_to_assets_percent
+
+    # Deprecated alias of `liabilities_to_assets_percent` (same value). Will be removed in a future dated version.
     attr_accessor :debt_to_assets_percent
 
     # Cash / total assets × 100.
@@ -40,6 +43,7 @@ module WefunderGenerated
         :'net_margin_percent' => :'net_margin_percent',
         :'gross_margin_percent' => :'gross_margin_percent',
         :'return_on_assets_percent' => :'return_on_assets_percent',
+        :'liabilities_to_assets_percent' => :'liabilities_to_assets_percent',
         :'debt_to_assets_percent' => :'debt_to_assets_percent',
         :'cash_to_assets_percent' => :'cash_to_assets_percent',
         :'revenue_per_employee' => :'revenue_per_employee'
@@ -57,6 +61,7 @@ module WefunderGenerated
         :'net_margin_percent' => :'String',
         :'gross_margin_percent' => :'String',
         :'return_on_assets_percent' => :'String',
+        :'liabilities_to_assets_percent' => :'String',
         :'debt_to_assets_percent' => :'String',
         :'cash_to_assets_percent' => :'String',
         :'revenue_per_employee' => :'String'
@@ -69,6 +74,7 @@ module WefunderGenerated
         :'net_margin_percent',
         :'gross_margin_percent',
         :'return_on_assets_percent',
+        :'liabilities_to_assets_percent',
         :'debt_to_assets_percent',
         :'cash_to_assets_percent',
         :'revenue_per_employee'
@@ -100,6 +106,10 @@ module WefunderGenerated
 
       if attributes.key?(:'return_on_assets_percent')
         self.return_on_assets_percent = attributes[:'return_on_assets_percent']
+      end
+
+      if attributes.key?(:'liabilities_to_assets_percent')
+        self.liabilities_to_assets_percent = attributes[:'liabilities_to_assets_percent']
       end
 
       if attributes.key?(:'debt_to_assets_percent')
@@ -138,6 +148,7 @@ module WefunderGenerated
           net_margin_percent == o.net_margin_percent &&
           gross_margin_percent == o.gross_margin_percent &&
           return_on_assets_percent == o.return_on_assets_percent &&
+          liabilities_to_assets_percent == o.liabilities_to_assets_percent &&
           debt_to_assets_percent == o.debt_to_assets_percent &&
           cash_to_assets_percent == o.cash_to_assets_percent &&
           revenue_per_employee == o.revenue_per_employee
@@ -152,7 +163,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [net_margin_percent, gross_margin_percent, return_on_assets_percent, debt_to_assets_percent, cash_to_assets_percent, revenue_per_employee].hash
+      [net_margin_percent, gross_margin_percent, return_on_assets_percent, liabilities_to_assets_percent, debt_to_assets_percent, cash_to_assets_percent, revenue_per_employee].hash
     end
 
     # Builds the object from hash

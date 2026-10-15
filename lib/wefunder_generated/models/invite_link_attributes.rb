@@ -18,18 +18,30 @@ module WefunderGenerated
     # Shareable invite URL. Carries the access token, not the id.
     attr_accessor :url
 
+    # `true` for a reusable (shareable) link, `false` for a per-person invite. Fixed at creation. Use this, not the presence of `email`, to tell the two apart. 
+    attr_accessor :reuse
+
     attr_accessor :allocation_cents
 
     attr_accessor :max_uses
 
     attr_accessor :uses_count
 
+    # How many times the link was clicked through: a click is recorded when the recipient continues past the link's landing page into the investment flow (loading the page alone is not counted, since mail clients prefetch links). Visits that found the link canceled or the offering closed are not clicks, nor are sends. Recorded for per-person links only; a reusable link reports 0 (use `uses_count` for its claims). 
+    attr_accessor :click_count
+
+    # When the link was first clicked; null if it never was. A click, not an email open.
+    attr_accessor :first_clicked_at
+
     # False once the link is canceled (soft-deleted).
     attr_accessor :active
 
+    # When the link was canceled; null while it is active.
+    attr_accessor :canceled_at
+
     attr_accessor :created_at
 
-    # Per-person only — recipient email.
+    # Per-person only — the recipient email you supplied at create. Always `null` for an invite addressed by `wefunder_user_id`, which never returns the account's email.
     attr_accessor :email
 
     # Per-person only — the recipient's id (`usr_...`), when they are an existing user.
@@ -38,7 +50,7 @@ module WefunderGenerated
     # Per-person only — derived live, not stored. `pending` (sent, not yet opened), `opened` (link clicked), `invested` (a matching active investment exists), `revoked` (canceled). 
     attr_accessor :status
 
-    # Per-person only.
+    # Per-person only. The first click, not an email open (deprecated: use `first_clicked_at`, which has the same value). 
     attr_accessor :opened_at
 
     # Per-person only.
@@ -76,10 +88,14 @@ module WefunderGenerated
     def self.attribute_map
       {
         :'url' => :'url',
+        :'reuse' => :'reuse',
         :'allocation_cents' => :'allocation_cents',
         :'max_uses' => :'max_uses',
         :'uses_count' => :'uses_count',
+        :'click_count' => :'click_count',
+        :'first_clicked_at' => :'first_clicked_at',
         :'active' => :'active',
+        :'canceled_at' => :'canceled_at',
         :'created_at' => :'created_at',
         :'email' => :'email',
         :'wefunder_user_id' => :'wefunder_user_id',
@@ -100,10 +116,14 @@ module WefunderGenerated
     def self.openapi_types
       {
         :'url' => :'String',
+        :'reuse' => :'Boolean',
         :'allocation_cents' => :'Integer',
         :'max_uses' => :'Integer',
         :'uses_count' => :'Integer',
+        :'click_count' => :'Integer',
+        :'first_clicked_at' => :'Time',
         :'active' => :'Boolean',
+        :'canceled_at' => :'Time',
         :'created_at' => :'Time',
         :'email' => :'String',
         :'wefunder_user_id' => :'String',
@@ -120,6 +140,8 @@ module WefunderGenerated
       Set.new([
         :'allocation_cents',
         :'max_uses',
+        :'first_clicked_at',
+        :'canceled_at',
         :'email',
         :'wefunder_user_id',
         :'status',
@@ -148,6 +170,10 @@ module WefunderGenerated
         self.url = attributes[:'url']
       end
 
+      if attributes.key?(:'reuse')
+        self.reuse = attributes[:'reuse']
+      end
+
       if attributes.key?(:'allocation_cents')
         self.allocation_cents = attributes[:'allocation_cents']
       end
@@ -160,8 +186,20 @@ module WefunderGenerated
         self.uses_count = attributes[:'uses_count']
       end
 
+      if attributes.key?(:'click_count')
+        self.click_count = attributes[:'click_count']
+      end
+
+      if attributes.key?(:'first_clicked_at')
+        self.first_clicked_at = attributes[:'first_clicked_at']
+      end
+
       if attributes.key?(:'active')
         self.active = attributes[:'active']
+      end
+
+      if attributes.key?(:'canceled_at')
+        self.canceled_at = attributes[:'canceled_at']
       end
 
       if attributes.key?(:'created_at')
@@ -232,10 +270,14 @@ module WefunderGenerated
       return true if self.equal?(o)
       self.class == o.class &&
           url == o.url &&
+          reuse == o.reuse &&
           allocation_cents == o.allocation_cents &&
           max_uses == o.max_uses &&
           uses_count == o.uses_count &&
+          click_count == o.click_count &&
+          first_clicked_at == o.first_clicked_at &&
           active == o.active &&
+          canceled_at == o.canceled_at &&
           created_at == o.created_at &&
           email == o.email &&
           wefunder_user_id == o.wefunder_user_id &&
@@ -255,7 +297,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [url, allocation_cents, max_uses, uses_count, active, created_at, email, wefunder_user_id, status, opened_at, invested_at, investment_id, events].hash
+      [url, reuse, allocation_cents, max_uses, uses_count, click_count, first_clicked_at, active, canceled_at, created_at, email, wefunder_user_id, status, opened_at, invested_at, investment_id, events].hash
     end
 
     # Builds the object from hash

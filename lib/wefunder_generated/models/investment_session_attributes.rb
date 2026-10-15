@@ -22,6 +22,7 @@ module WefunderGenerated
 
     attr_accessor :spv_id
 
+    # The recipient email you supplied. `null` for a session addressed by `wefunder_user_id`, directly or through an invite link addressed that way, which never returns the account's email.
     attr_accessor :email
 
     # The fixed amount the session locks to, in cents; null when the recipient chooses their own amount.

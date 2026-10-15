@@ -161,7 +161,7 @@ module WefunderGenerated
     def valid?
       warn '[DEPRECATED] the `valid?` method is obsolete'
       return false if @action_name.nil?
-      action_name_validator = EnumAttributeValidator.new('String', ["syndicates.close_deal", "syndicates.finalize_deal", "syndicates.publish", "syndicates.remove_member", "syndicates.delete_draft", "comments.create"])
+      action_name_validator = EnumAttributeValidator.new('String', ["syndicates.publish", "syndicates.remove_member", "syndicates.delete_draft", "comments.create"])
       return false unless action_name_validator.valid?(@action_name)
       return false if @resource_type.nil?
       return false if @resource_id.nil?
@@ -171,7 +171,7 @@ module WefunderGenerated
     # Custom attribute writer method checking allowed values (enum).
     # @param [Object] action_name Object to be assigned
     def action_name=(action_name)
-      validator = EnumAttributeValidator.new('String', ["syndicates.close_deal", "syndicates.finalize_deal", "syndicates.publish", "syndicates.remove_member", "syndicates.delete_draft", "comments.create"])
+      validator = EnumAttributeValidator.new('String', ["syndicates.publish", "syndicates.remove_member", "syndicates.delete_draft", "comments.create"])
       unless validator.valid?(action_name)
         fail ArgumentError, "invalid value for \"action_name\", must be one of #{validator.allowable_values}."
       end

@@ -23,12 +23,16 @@ module WefunderGenerated
 
     attr_accessor :slug
 
+    # The company's page on wefunder.com, absolute. This is the link target the [attribution rule](/resources/acceptable-use#attribution) asks for wherever you show the position; do not link to the investor's Wefunder portfolio instead. Null when the company no longer has a public page.
+    attr_accessor :url
+
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
       {
         :'id' => :'id',
         :'name' => :'name',
-        :'slug' => :'slug'
+        :'slug' => :'slug',
+        :'url' => :'url'
       }
     end
 
@@ -42,14 +46,16 @@ module WefunderGenerated
       {
         :'id' => :'String',
         :'name' => :'String',
-        :'slug' => :'String'
+        :'slug' => :'String',
+        :'url' => :'String'
       }
     end
 
     # List of attributes with nullable: true
     def self.openapi_nullable
       Set.new([
-        :'slug'
+        :'slug',
+        :'url'
       ])
     end
 
@@ -79,6 +85,10 @@ module WefunderGenerated
       if attributes.key?(:'slug')
         self.slug = attributes[:'slug']
       end
+
+      if attributes.key?(:'url')
+        self.url = attributes[:'url']
+      end
     end
 
     # Show invalid properties with the reasons. Usually used together with valid?
@@ -103,7 +113,8 @@ module WefunderGenerated
       self.class == o.class &&
           id == o.id &&
           name == o.name &&
-          slug == o.slug
+          slug == o.slug &&
+          url == o.url
     end
 
     # @see the `==` method
@@ -115,7 +126,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [id, name, slug].hash
+      [id, name, slug, url].hash
     end
 
     # Builds the object from hash

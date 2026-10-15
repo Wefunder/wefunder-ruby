@@ -36,12 +36,15 @@ module Wefunder
     # spec/webhooks_spec.rb, which fails when the two diverge.
     EVENT_NAMES = %w[
       investment.created investment.reinstated investment.canceled investment.converted
-      investment.amount_changed investment.executed investment.changed
+      investment.amount_changed investment.executed investment.changed investment.referred
       offering.opened offering.closing offering.closed offering.canceled
       investment_session.created investment_session.started investment_session.completed
       investment_session.expired investment_session.canceled
       syndicate_member.invited syndicate_member.reinvited syndicate_member.applied
-      syndicate_member.approved syndicate_member.joined
+      syndicate_member.approved syndicate_member.joined syndicate_member.left syndicate_member.declined
+      join_session.pending_approval join_session.completed join_session.rejected join_session.ineligible
+      join_session.canceled join_session.expired
+      installation.created installation.revoked referral_cohorts.published
     ].freeze
 
     # Raised by +construct_event+. Respond 400 and don't process.

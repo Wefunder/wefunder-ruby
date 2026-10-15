@@ -31,6 +31,9 @@ module WefunderGenerated
     # Why the position ended. Set only for `exited` and `failed` positions — a `sold` position ended with the transfer itself, and some older positions have no recorded ending. `ipo` means the company went public; distributions, if any, appear in `realized_gain_cents`. 
     attr_accessor :exit_reason
 
+    # The date the position ended (`YYYY-MM-DD`): the effective date of the company's recorded exit. Set only for `exited` and `failed` positions, and null for older exits recorded before Wefunder kept exit dates, even when `exit_reason` is present. 
+    attr_accessor :exited_on
+
     attr_accessor :invested_at
 
     # ISO 4217 code, lower-case, of the investment amounts on this position and its `securities` (cost basis, values, gains, share price) — the offering's currency: `usd`, or `eur` for an ECSP round. A security's note cap and pre-money valuation carry their own `terms.currency`, which can differ.
@@ -38,7 +41,7 @@ module WefunderGenerated
 
     attr_accessor :cost_basis_cents
 
-    # Estimated current value; based on cost basis when no newer valuation has been recorded.
+    # Estimated current value. It equals `cost_basis_cents` until a later priced round, a recorded valuation mark, or an exit marks the position, so an active position reading at cost is expected, not missing data.
     attr_accessor :current_value_cents
 
     # Can be negative.
@@ -96,6 +99,7 @@ module WefunderGenerated
         :'security' => :'security',
         :'status' => :'status',
         :'exit_reason' => :'exit_reason',
+        :'exited_on' => :'exited_on',
         :'invested_at' => :'invested_at',
         :'currency' => :'currency',
         :'cost_basis_cents' => :'cost_basis_cents',
@@ -126,6 +130,7 @@ module WefunderGenerated
         :'security' => :'SecuritySummary',
         :'status' => :'String',
         :'exit_reason' => :'String',
+        :'exited_on' => :'Date',
         :'invested_at' => :'Time',
         :'currency' => :'String',
         :'cost_basis_cents' => :'Integer',
@@ -147,6 +152,7 @@ module WefunderGenerated
       Set.new([
         :'security',
         :'exit_reason',
+        :'exited_on',
         :'invested_at',
         :'return_multiple',
         :'shares_held',
@@ -191,6 +197,10 @@ module WefunderGenerated
 
       if attributes.key?(:'exit_reason')
         self.exit_reason = attributes[:'exit_reason']
+      end
+
+      if attributes.key?(:'exited_on')
+        self.exited_on = attributes[:'exited_on']
       end
 
       if attributes.key?(:'invested_at')
@@ -312,6 +322,7 @@ module WefunderGenerated
           security == o.security &&
           status == o.status &&
           exit_reason == o.exit_reason &&
+          exited_on == o.exited_on &&
           invested_at == o.invested_at &&
           currency == o.currency &&
           cost_basis_cents == o.cost_basis_cents &&
@@ -336,7 +347,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [offering_id, company, asset_type, security, status, exit_reason, invested_at, currency, cost_basis_cents, current_value_cents, unrealized_gain_cents, realized_gain_cents, return_multiple, shares_held, current_share_price, securities, holdings, investor_count, as_of].hash
+      [offering_id, company, asset_type, security, status, exit_reason, exited_on, invested_at, currency, cost_basis_cents, current_value_cents, unrealized_gain_cents, realized_gain_cents, return_multiple, shares_held, current_share_price, securities, holdings, investor_count, as_of].hash
     end
 
     # Builds the object from hash

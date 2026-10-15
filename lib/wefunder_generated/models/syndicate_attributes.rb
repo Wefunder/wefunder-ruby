@@ -40,6 +40,9 @@ module WefunderGenerated
     # Whether accredited applicants are approved automatically.
     attr_accessor :auto_accept_accredited_members
 
+    # Whether an accredited invitee who accepts a join session is admitted immediately. Read it to pick the consent copy (\"Join\" vs \"Request to join\") before minting a join session.
+    attr_accessor :auto_approve_join_sessions
+
     # Whether members must invest through the syndicate's fund.
     attr_accessor :fund_required
 
@@ -81,6 +84,7 @@ module WefunderGenerated
         :'membership_open' => :'membership_open',
         :'syndicate_type' => :'syndicate_type',
         :'auto_accept_accredited_members' => :'auto_accept_accredited_members',
+        :'auto_approve_join_sessions' => :'auto_approve_join_sessions',
         :'fund_required' => :'fund_required',
         :'annual_subscription' => :'annual_subscription',
         :'traditional_fund' => :'traditional_fund',
@@ -113,6 +117,7 @@ module WefunderGenerated
         :'membership_open' => :'Boolean',
         :'syndicate_type' => :'String',
         :'auto_accept_accredited_members' => :'Boolean',
+        :'auto_approve_join_sessions' => :'Boolean',
         :'fund_required' => :'Boolean',
         :'annual_subscription' => :'SyndicateAttributesAnnualSubscription',
         :'traditional_fund' => :'SyndicateAttributesTraditionalFund',
@@ -195,6 +200,10 @@ module WefunderGenerated
         self.auto_accept_accredited_members = attributes[:'auto_accept_accredited_members']
       end
 
+      if attributes.key?(:'auto_approve_join_sessions')
+        self.auto_approve_join_sessions = attributes[:'auto_approve_join_sessions']
+      end
+
       if attributes.key?(:'fund_required')
         self.fund_required = attributes[:'fund_required']
       end
@@ -270,6 +279,7 @@ module WefunderGenerated
           membership_open == o.membership_open &&
           syndicate_type == o.syndicate_type &&
           auto_accept_accredited_members == o.auto_accept_accredited_members &&
+          auto_approve_join_sessions == o.auto_approve_join_sessions &&
           fund_required == o.fund_required &&
           annual_subscription == o.annual_subscription &&
           traditional_fund == o.traditional_fund &&
@@ -292,7 +302,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [name, slug, tagline, description, avatar_url, published, launched, membership_open, syndicate_type, auto_accept_accredited_members, fund_required, annual_subscription, traditional_fund, member_count, deal_count, primary_fund_company_id, primary_fund_company, created_by_user_id, created_by, created_at, updated_at].hash
+      [name, slug, tagline, description, avatar_url, published, launched, membership_open, syndicate_type, auto_accept_accredited_members, auto_approve_join_sessions, fund_required, annual_subscription, traditional_fund, member_count, deal_count, primary_fund_company_id, primary_fund_company, created_by_user_id, created_by, created_at, updated_at].hash
     end
 
     # Builds the object from hash

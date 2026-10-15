@@ -21,10 +21,10 @@ module WefunderGenerated
     # Member count grouped by role
     attr_accessor :members_by_role
 
-    # Total number of linked deals (all linked fundraises)
+    # Rounds in the syndicate's visible deal set, in any state. Excludes invite-only companies' rounds and testing-the-waters rounds of directory companies, so this is not every round the syndicate has been linked to. 
     attr_accessor :total_deals
 
-    # Number of currently live deals (open/oversubscribed/closing states)
+    # The open, oversubscribed, or closing subset of `total_deals`; the rows `GET /syndicates/{syndicate_id}/deals` lists. 
     attr_accessor :live_deals
 
     # Total amount raised across directory-selected deals (one per company), in whole dollars, as a string. 

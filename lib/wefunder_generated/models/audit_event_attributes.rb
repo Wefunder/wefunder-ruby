@@ -124,6 +124,7 @@ module WefunderGenerated
     def self.openapi_nullable
       Set.new([
         :'actor_name',
+        :'resource_type',
         :'resource_id',
         :'resource_label',
         :'old_values',

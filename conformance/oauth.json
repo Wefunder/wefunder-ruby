@@ -3,7 +3,7 @@
   "constants": {
     "api_base_url": "https://api.wefunder.com",
     "api_version_header": "Wefunder-Version",
-    "default_api_version": "2025-01-15",
+    "default_api_version": "2026-10-15",
     "authorize_base_url_live": "https://wefunder.com/oauth",
     "authorize_base_url_sandbox": "https://oauth.wefunder-sandbox.com/oauth",
     "token_base_url": "https://api.wefunder.com/oauth",
