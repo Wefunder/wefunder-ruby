@@ -49,6 +49,9 @@ module WefunderGenerated
     # Funding target in USD, as a decimal string.
     attr_accessor :funding_target
 
+    # The most this round may raise, in USD as a decimal string (the same denomination as `funding_target`). For a Reg CF round, the maximum offering amount on its Form C (the largest funding tier); otherwise the maximum the company set for the round. Null when neither exists. Raising past `funding_target` up to this amount is normal. 
+    attr_accessor :max_funding_target
+
     # Minimum investment in USD, as a decimal string.
     attr_accessor :min_investment
 
@@ -65,6 +68,12 @@ module WefunderGenerated
 
     # When the round finished raising. Null while the round is upcoming or open (the scheduled close is `closes_at`); set only once `status` is `closed`.
     attr_accessor :closed_at
+
+    # The round's latest accepted Form C (or Form C/A amendment) on SEC EDGAR, a public sec.gov URL. Reg CF rounds only; null until the Form C is filed and for every other exemption. For the round a company page shows, the same filing is `filing.sec_filing_url` in `GET /companies/{id}/disclosures`. 
+    attr_accessor :form_c_url
+
+    # The legal name of the Wefunder SPV (a series LLC that co-issues the round) that investors hold through, e.g. \"WF Acme 2025, a series of Wefunder SPV, LLC\". Null when investors hold the security directly. 
+    attr_accessor :spv_legal_name
 
     # **Logged-in view only** (`read:explore`). `false` when a logged-out visitor could not see this offering — it is in the response only because of who the authorizing user is (accredited, invited, Vault/syndicate member). Absent in the public view. 
     attr_accessor :publicly_visible
@@ -113,12 +122,15 @@ module WefunderGenerated
         :'status' => :'status',
         :'testing_the_waters' => :'testing_the_waters',
         :'funding_target' => :'funding_target',
+        :'max_funding_target' => :'max_funding_target',
         :'min_investment' => :'min_investment',
         :'amount_raised' => :'amount_raised',
         :'investor_count' => :'investor_count',
         :'started_at' => :'started_at',
         :'closes_at' => :'closes_at',
         :'closed_at' => :'closed_at',
+        :'form_c_url' => :'form_c_url',
+        :'spv_legal_name' => :'spv_legal_name',
         :'publicly_visible' => :'publicly_visible',
         :'invested' => :'invested',
         :'followed' => :'followed'
@@ -146,12 +158,15 @@ module WefunderGenerated
         :'status' => :'String',
         :'testing_the_waters' => :'Boolean',
         :'funding_target' => :'String',
+        :'max_funding_target' => :'String',
         :'min_investment' => :'String',
         :'amount_raised' => :'String',
         :'investor_count' => :'Integer',
         :'started_at' => :'Time',
         :'closes_at' => :'Time',
         :'closed_at' => :'Time',
+        :'form_c_url' => :'String',
+        :'spv_legal_name' => :'String',
         :'publicly_visible' => :'Boolean',
         :'invested' => :'Boolean',
         :'followed' => :'Boolean'
@@ -167,12 +182,15 @@ module WefunderGenerated
         :'security',
         :'intended_security',
         :'funding_target',
+        :'max_funding_target',
         :'min_investment',
         :'amount_raised',
         :'investor_count',
         :'started_at',
         :'closes_at',
         :'closed_at',
+        :'form_c_url',
+        :'spv_legal_name',
       ])
     end
 
@@ -247,6 +265,10 @@ module WefunderGenerated
         self.funding_target = attributes[:'funding_target']
       end
 
+      if attributes.key?(:'max_funding_target')
+        self.max_funding_target = attributes[:'max_funding_target']
+      end
+
       if attributes.key?(:'min_investment')
         self.min_investment = attributes[:'min_investment']
       end
@@ -269,6 +291,14 @@ module WefunderGenerated
 
       if attributes.key?(:'closed_at')
         self.closed_at = attributes[:'closed_at']
+      end
+
+      if attributes.key?(:'form_c_url')
+        self.form_c_url = attributes[:'form_c_url']
+      end
+
+      if attributes.key?(:'spv_legal_name')
+        self.spv_legal_name = attributes[:'spv_legal_name']
       end
 
       if attributes.key?(:'publicly_visible')
@@ -329,12 +359,15 @@ module WefunderGenerated
           status == o.status &&
           testing_the_waters == o.testing_the_waters &&
           funding_target == o.funding_target &&
+          max_funding_target == o.max_funding_target &&
           min_investment == o.min_investment &&
           amount_raised == o.amount_raised &&
           investor_count == o.investor_count &&
           started_at == o.started_at &&
           closes_at == o.closes_at &&
           closed_at == o.closed_at &&
+          form_c_url == o.form_c_url &&
+          spv_legal_name == o.spv_legal_name &&
           publicly_visible == o.publicly_visible &&
           invested == o.invested &&
           followed == o.followed
@@ -349,7 +382,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [company_name, tagline, url, card_image_url, logo_url, exemption, security, intended_security, industries, business_models, status, testing_the_waters, funding_target, min_investment, amount_raised, investor_count, started_at, closes_at, closed_at, publicly_visible, invested, followed].hash
+      [company_name, tagline, url, card_image_url, logo_url, exemption, security, intended_security, industries, business_models, status, testing_the_waters, funding_target, max_funding_target, min_investment, amount_raised, investor_count, started_at, closes_at, closed_at, form_c_url, spv_legal_name, publicly_visible, invested, followed].hash
     end
 
     # Builds the object from hash

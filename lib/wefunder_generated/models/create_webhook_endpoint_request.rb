@@ -18,6 +18,9 @@ module WefunderGenerated
     # Public HTTPS URL to receive deliveries (private/internal IPs rejected).
     attr_accessor :url
 
+    # Bind the endpoint to one active installation of your app (`inst_…`) instead of creating an app-wide endpoint. An unknown or revoked id is 404. An installation token may omit this (it always binds to its own installation); a user token may bind only to an installation its holder has a role on at or above the installation's granted tier. Bound endpoints are live-only, capped at 5 per installation, idempotent on (installation, url, mode), and their `url` is returned only in this response. 
+    attr_accessor :installation
+
     # Event names to subscribe to (from the event catalog). At least one.
     attr_accessor :events
 
@@ -49,6 +52,7 @@ module WefunderGenerated
     def self.attribute_map
       {
         :'url' => :'url',
+        :'installation' => :'installation',
         :'events' => :'events',
         :'mode' => :'mode'
       }
@@ -63,6 +67,7 @@ module WefunderGenerated
     def self.openapi_types
       {
         :'url' => :'String',
+        :'installation' => :'String',
         :'events' => :'Array<String>',
         :'mode' => :'String'
       }
@@ -93,6 +98,10 @@ module WefunderGenerated
         self.url = attributes[:'url']
       else
         self.url = nil
+      end
+
+      if attributes.key?(:'installation')
+        self.installation = attributes[:'installation']
       end
 
       if attributes.key?(:'events')
@@ -158,6 +167,7 @@ module WefunderGenerated
       return true if self.equal?(o)
       self.class == o.class &&
           url == o.url &&
+          installation == o.installation &&
           events == o.events &&
           mode == o.mode
     end
@@ -171,7 +181,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [url, events, mode].hash
+      [url, installation, events, mode].hash
     end
 
     # Builds the object from hash

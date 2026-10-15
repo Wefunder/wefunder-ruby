@@ -22,8 +22,16 @@ module WefunderGenerated
 
     attr_accessor :accounts_receivable
 
+    # Total current liabilities as filed on the Form C balance sheet — including SAFE and convertible-note liabilities, accrued expenses and deferred revenue, not only borrowed money. For borrowings see `outstanding_notes` and `outstanding_debts`, which itemize each instrument with its principal.
+    attr_accessor :current_liabilities
+
+    # Total non-current liabilities as filed on the Form C balance sheet. Same caveat as `current_liabilities`.
+    attr_accessor :non_current_liabilities
+
+    # Deprecated alias of `current_liabilities` (same value): the figure is total current liabilities, not short-term debt. Will be removed in a future dated version.
     attr_accessor :short_term_debt
 
+    # Deprecated alias of `non_current_liabilities` (same value): the figure is total non-current liabilities, not long-term debt. Will be removed in a future dated version.
     attr_accessor :long_term_debt
 
     attr_accessor :revenue
@@ -40,6 +48,8 @@ module WefunderGenerated
         :'total_assets' => :'total_assets',
         :'cash_and_equivalents' => :'cash_and_equivalents',
         :'accounts_receivable' => :'accounts_receivable',
+        :'current_liabilities' => :'current_liabilities',
+        :'non_current_liabilities' => :'non_current_liabilities',
         :'short_term_debt' => :'short_term_debt',
         :'long_term_debt' => :'long_term_debt',
         :'revenue' => :'revenue',
@@ -60,6 +70,8 @@ module WefunderGenerated
         :'total_assets' => :'String',
         :'cash_and_equivalents' => :'String',
         :'accounts_receivable' => :'String',
+        :'current_liabilities' => :'String',
+        :'non_current_liabilities' => :'String',
         :'short_term_debt' => :'String',
         :'long_term_debt' => :'String',
         :'revenue' => :'String',
@@ -75,6 +87,8 @@ module WefunderGenerated
         :'total_assets',
         :'cash_and_equivalents',
         :'accounts_receivable',
+        :'current_liabilities',
+        :'non_current_liabilities',
         :'short_term_debt',
         :'long_term_debt',
         :'revenue',
@@ -109,6 +123,14 @@ module WefunderGenerated
 
       if attributes.key?(:'accounts_receivable')
         self.accounts_receivable = attributes[:'accounts_receivable']
+      end
+
+      if attributes.key?(:'current_liabilities')
+        self.current_liabilities = attributes[:'current_liabilities']
+      end
+
+      if attributes.key?(:'non_current_liabilities')
+        self.non_current_liabilities = attributes[:'non_current_liabilities']
       end
 
       if attributes.key?(:'short_term_debt')
@@ -159,6 +181,8 @@ module WefunderGenerated
           total_assets == o.total_assets &&
           cash_and_equivalents == o.cash_and_equivalents &&
           accounts_receivable == o.accounts_receivable &&
+          current_liabilities == o.current_liabilities &&
+          non_current_liabilities == o.non_current_liabilities &&
           short_term_debt == o.short_term_debt &&
           long_term_debt == o.long_term_debt &&
           revenue == o.revenue &&
@@ -176,7 +200,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [total_assets, cash_and_equivalents, accounts_receivable, short_term_debt, long_term_debt, revenue, cost_of_goods_sold, taxes_paid, net_income].hash
+      [total_assets, cash_and_equivalents, accounts_receivable, current_liabilities, non_current_liabilities, short_term_debt, long_term_debt, revenue, cost_of_goods_sold, taxes_paid, net_income].hash
     end
 
     # Builds the object from hash

@@ -19,144 +19,6 @@ module WefunderGenerated
     def initialize(api_client = ApiClient.default)
       @api_client = api_client
     end
-    # Close deal
-    # Closing a deal is irreversible and requires human approval through the Intent system. This endpoint server-mints a pending `syndicates.close_deal` intent and returns the deal under `data` plus the intent's `review_url` under `meta.close_deal_intent`. The deal is not transitioned until a permitted human approves the intent in the Wefunder UI. Idempotent: a repeated call returns the same pending intent rather than minting a duplicate. 
-    # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
-    # @param fundraise_id [String] The deal&#39;s id (&#x60;ofr_...&#x60;), as returned by the deals list. Integer ids are internal and not accepted.
-    # @param [Hash] opts the optional parameters
-    # @return [SyndicateDealCloseIntentEnvelope]
-    def close_syndicate_deal(syndicate_id, fundraise_id, opts = {})
-      data, _status_code, _headers = close_syndicate_deal_with_http_info(syndicate_id, fundraise_id, opts)
-      data
-    end
-
-    # Close deal
-    # Closing a deal is irreversible and requires human approval through the Intent system. This endpoint server-mints a pending &#x60;syndicates.close_deal&#x60; intent and returns the deal under &#x60;data&#x60; plus the intent&#39;s &#x60;review_url&#x60; under &#x60;meta.close_deal_intent&#x60;. The deal is not transitioned until a permitted human approves the intent in the Wefunder UI. Idempotent: a repeated call returns the same pending intent rather than minting a duplicate. 
-    # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
-    # @param fundraise_id [String] The deal&#39;s id (&#x60;ofr_...&#x60;), as returned by the deals list. Integer ids are internal and not accepted.
-    # @param [Hash] opts the optional parameters
-    # @return [Array<(SyndicateDealCloseIntentEnvelope, Integer, Hash)>] SyndicateDealCloseIntentEnvelope data, response status code and response headers
-    def close_syndicate_deal_with_http_info(syndicate_id, fundraise_id, opts = {})
-      if @api_client.config.debugging
-        @api_client.config.logger.debug 'Calling API: SyndicateDealsApi.close_syndicate_deal ...'
-      end
-      # verify the required parameter 'syndicate_id' is set
-      if @api_client.config.client_side_validation && syndicate_id.nil?
-        fail ArgumentError, "Missing the required parameter 'syndicate_id' when calling SyndicateDealsApi.close_syndicate_deal"
-      end
-      # verify the required parameter 'fundraise_id' is set
-      if @api_client.config.client_side_validation && fundraise_id.nil?
-        fail ArgumentError, "Missing the required parameter 'fundraise_id' when calling SyndicateDealsApi.close_syndicate_deal"
-      end
-      # resource path
-      local_var_path = '/syndicates/{syndicate_id}/deals/{fundraise_id}/close'.sub('{' + 'syndicate_id' + '}', CGI.escape(syndicate_id.to_s)).sub('{' + 'fundraise_id' + '}', CGI.escape(fundraise_id.to_s))
-
-      # query parameters
-      query_params = opts[:query_params] || {}
-
-      # header parameters
-      header_params = opts[:header_params] || {}
-      # HTTP header 'Accept' (if needed)
-      header_params['Accept'] = @api_client.select_header_accept(['application/json']) unless header_params['Accept']
-
-      # form parameters
-      form_params = opts[:form_params] || {}
-
-      # http body (model)
-      post_body = opts[:debug_body]
-
-      # return_type
-      return_type = opts[:debug_return_type] || 'SyndicateDealCloseIntentEnvelope'
-
-      # auth_names
-      auth_names = opts[:debug_auth_names] || ['bearerAuth', 'bearerAuth']
-
-      new_options = opts.merge(
-        :operation => :"SyndicateDealsApi.close_syndicate_deal",
-        :header_params => header_params,
-        :query_params => query_params,
-        :form_params => form_params,
-        :body => post_body,
-        :auth_names => auth_names,
-        :return_type => return_type
-      )
-
-      data, status_code, headers = @api_client.call_api(:POST, local_var_path, new_options)
-      if @api_client.config.debugging
-        @api_client.config.logger.debug "API called: SyndicateDealsApi#close_syndicate_deal\nData: #{data.inspect}\nStatus code: #{status_code}\nHeaders: #{headers}"
-      end
-      return data, status_code, headers
-    end
-
-    # Finalize deal
-    # Finalizing a deal is irreversible and requires human approval through the Intent system. This endpoint server-mints a pending `syndicates.finalize_deal` intent and returns the deal under `data` plus the intent's `review_url` under `meta.finalize_deal_intent`. The finalize runs only when a permitted human approves the intent in the Wefunder UI. Idempotent: a repeated call returns the same pending intent rather than minting a duplicate. 
-    # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
-    # @param fundraise_id [String] The deal&#39;s id (&#x60;ofr_...&#x60;), as returned by the deals list. Integer ids are internal and not accepted.
-    # @param [Hash] opts the optional parameters
-    # @return [SyndicateDealFinalizeIntentEnvelope]
-    def finalize_syndicate_deal(syndicate_id, fundraise_id, opts = {})
-      data, _status_code, _headers = finalize_syndicate_deal_with_http_info(syndicate_id, fundraise_id, opts)
-      data
-    end
-
-    # Finalize deal
-    # Finalizing a deal is irreversible and requires human approval through the Intent system. This endpoint server-mints a pending &#x60;syndicates.finalize_deal&#x60; intent and returns the deal under &#x60;data&#x60; plus the intent&#39;s &#x60;review_url&#x60; under &#x60;meta.finalize_deal_intent&#x60;. The finalize runs only when a permitted human approves the intent in the Wefunder UI. Idempotent: a repeated call returns the same pending intent rather than minting a duplicate. 
-    # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
-    # @param fundraise_id [String] The deal&#39;s id (&#x60;ofr_...&#x60;), as returned by the deals list. Integer ids are internal and not accepted.
-    # @param [Hash] opts the optional parameters
-    # @return [Array<(SyndicateDealFinalizeIntentEnvelope, Integer, Hash)>] SyndicateDealFinalizeIntentEnvelope data, response status code and response headers
-    def finalize_syndicate_deal_with_http_info(syndicate_id, fundraise_id, opts = {})
-      if @api_client.config.debugging
-        @api_client.config.logger.debug 'Calling API: SyndicateDealsApi.finalize_syndicate_deal ...'
-      end
-      # verify the required parameter 'syndicate_id' is set
-      if @api_client.config.client_side_validation && syndicate_id.nil?
-        fail ArgumentError, "Missing the required parameter 'syndicate_id' when calling SyndicateDealsApi.finalize_syndicate_deal"
-      end
-      # verify the required parameter 'fundraise_id' is set
-      if @api_client.config.client_side_validation && fundraise_id.nil?
-        fail ArgumentError, "Missing the required parameter 'fundraise_id' when calling SyndicateDealsApi.finalize_syndicate_deal"
-      end
-      # resource path
-      local_var_path = '/syndicates/{syndicate_id}/deals/{fundraise_id}/finalize'.sub('{' + 'syndicate_id' + '}', CGI.escape(syndicate_id.to_s)).sub('{' + 'fundraise_id' + '}', CGI.escape(fundraise_id.to_s))
-
-      # query parameters
-      query_params = opts[:query_params] || {}
-
-      # header parameters
-      header_params = opts[:header_params] || {}
-      # HTTP header 'Accept' (if needed)
-      header_params['Accept'] = @api_client.select_header_accept(['application/json']) unless header_params['Accept']
-
-      # form parameters
-      form_params = opts[:form_params] || {}
-
-      # http body (model)
-      post_body = opts[:debug_body]
-
-      # return_type
-      return_type = opts[:debug_return_type] || 'SyndicateDealFinalizeIntentEnvelope'
-
-      # auth_names
-      auth_names = opts[:debug_auth_names] || ['bearerAuth', 'bearerAuth']
-
-      new_options = opts.merge(
-        :operation => :"SyndicateDealsApi.finalize_syndicate_deal",
-        :header_params => header_params,
-        :query_params => query_params,
-        :form_params => form_params,
-        :body => post_body,
-        :auth_names => auth_names,
-        :return_type => return_type
-      )
-
-      data, status_code, headers = @api_client.call_api(:POST, local_var_path, new_options)
-      if @api_client.config.debugging
-        @api_client.config.logger.debug "API called: SyndicateDealsApi#finalize_syndicate_deal\nData: #{data.inspect}\nStatus code: #{status_code}\nHeaders: #{headers}"
-      end
-      return data, status_code, headers
-    end
-
     # Get deal details
     # Returns full details for a specific deal including investor breakdown.
     # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
@@ -306,7 +168,7 @@ module WefunderGenerated
     end
 
     # List deals
-    # Returns the syndicate's **live** deals (open, oversubscribed, or closing) with status, terms, and metrics. Closed and upcoming rounds are not listed; `statistics.total_deals` counts all linked rounds. 
+    # Returns the syndicate's **live** deals (open, oversubscribed, or closing) with status, terms, and metrics. Closed and upcoming rounds are not listed; `statistics.total_deals` counts the same visible deal set in every state. The visible set is every round of the syndicate's directory companies except invite-only companies' rounds and testing-the-waters rounds; a syndicate with no directory companies falls back to its explicitly linked rounds, excluding invite-only companies' rounds only. 
     # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
     # @param [Hash] opts the optional parameters
     # @option opts [String] :cursor Opaque cursor from the previous response&#39;s &#x60;meta.next_cursor&#x60;.
@@ -318,7 +180,7 @@ module WefunderGenerated
     end
 
     # List deals
-    # Returns the syndicate&#39;s **live** deals (open, oversubscribed, or closing) with status, terms, and metrics. Closed and upcoming rounds are not listed; &#x60;statistics.total_deals&#x60; counts all linked rounds. 
+    # Returns the syndicate&#39;s **live** deals (open, oversubscribed, or closing) with status, terms, and metrics. Closed and upcoming rounds are not listed; &#x60;statistics.total_deals&#x60; counts the same visible deal set in every state. The visible set is every round of the syndicate&#39;s directory companies except invite-only companies&#39; rounds and testing-the-waters rounds; a syndicate with no directory companies falls back to its explicitly linked rounds, excluding invite-only companies&#39; rounds only. 
     # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
     # @param [Hash] opts the optional parameters
     # @option opts [String] :cursor Opaque cursor from the previous response&#39;s &#x60;meta.next_cursor&#x60;.

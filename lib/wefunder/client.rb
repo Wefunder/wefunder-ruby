@@ -9,7 +9,7 @@ module Wefunder
   # Version-free base — the edge gateway serves the API at the host root; +/api/v2+ remains a
   # back-compat alias. The API version is pinned via the +Wefunder-Version+ header, not the path.
   DEFAULT_API_BASE_URL = "https://api.wefunder.com"
-  DEFAULT_API_VERSION = "2025-01-15"
+  DEFAULT_API_VERSION = "2026-10-15"
   API_VERSION_HEADER = "Wefunder-Version"
 
   # "live" / "test" from the access-token prefix. UX only — never used for routing.
@@ -26,7 +26,8 @@ module Wefunder
   # typed-error unwrapping, and lazy auto-pagination. +raw+ exposes every generated API.
   class Client
     attr_reader :mode, :users, :offerings, :investments, :portfolio, :campaigns, :syndicates, :intents,
-                :attribution, :installations, :webhook_endpoints
+                :installations, :member_links, :referral_codes, :join_sessions, :investment_sessions,
+                :webhook_endpoints
 
     def initialize(access_token: nil, tokens: nil, client_id: nil, client_secret: nil, client_credentials: nil,
                    api_version: DEFAULT_API_VERSION, base_url: DEFAULT_API_BASE_URL, authorize_base_url: nil,
@@ -52,8 +53,11 @@ module Wefunder
       @campaigns = Campaigns.new(self)
       @syndicates = Syndicates.new(self)
       @intents = Intents.new(self)
-      @attribution = Attribution.new(self)
       @installations = Installations.new(self)
+      @member_links = MemberLinks.new(self)
+      @referral_codes = ReferralCodes.new(self)
+      @join_sessions = JoinSessions.new(self)
+      @investment_sessions = InvestmentSessions.new(self)
       @webhook_endpoints = WebhookEndpoints.new(self)
     end
 
@@ -166,13 +170,14 @@ module Wefunder
     # Lazily-built generated API instances, one per tag.
     class Raw
       APIS = {
-        activity: "ActivityApi", attribution: "AttributionApi", attribution_partners: "AttributionPartnersApi",
-        attribution_webhooks: "AttributionWebhooksApi", campaigns: "CampaignsApi", companies: "CompaniesApi",
-        explore: "ExploreApi", installations: "InstallationsApi", intents: "IntentsApi",
-        investment_delta: "InvestmentDeltaApi", investments: "InvestmentsApi", portfolio: "PortfolioApi",
-        syndicate_deals: "SyndicateDealsApi", syndicate_members: "SyndicateMembersApi",
-        syndicate_portfolio: "SyndicatePortfolioApi", syndicate_statistics: "SyndicateStatisticsApi",
-        syndicates: "SyndicatesApi", users: "UsersApi", webhook_endpoints: "WebhookEndpointsApi"
+        activity: "ActivityApi", campaigns: "CampaignsApi", companies: "CompaniesApi", explore: "ExploreApi",
+        installations: "InstallationsApi", intents: "IntentsApi", investment_delta: "InvestmentDeltaApi",
+        investments: "InvestmentsApi", member_links: "MemberLinksApi",
+        partner_invites_sessions: "PartnerInvitesSessionsApi", portfolio: "PortfolioApi",
+        referral_codes: "ReferralCodesApi", syndicate_deals: "SyndicateDealsApi",
+        syndicate_members: "SyndicateMembersApi", syndicate_portfolio: "SyndicatePortfolioApi",
+        syndicate_statistics: "SyndicateStatisticsApi", syndicates: "SyndicatesApi", users: "UsersApi",
+        webhook_endpoints: "WebhookEndpointsApi"
       }.freeze
 
       def initialize(api_client)
@@ -272,8 +277,118 @@ module Wefunder
       def preview(body) = data_of(wrap { raw.intents.preview_intent(WefunderGenerated::PreviewIntentRequest.new(body)) })
     end
 
-    class Attribution < Namespace
-      def me = data_of(wrap { raw.attribution_partners.get_attribution_me })
+    # /syndicates/{id}/join_sessions (write:syndicate_members to mint, read:syndicates to read; beta).
+    # Mint a hosted session for an email, send the person to +attributes["url"]+, and learn the
+    # outcome from +get+ or the +join_session.*+ webhooks. The spec publishes no response schema for
+    # these yet, so sessions come back as plain Hashes.
+    class JoinSessions < Namespace
+      def list(syndicate_id, **opts)
+        strings(wrap { raw.syndicate_members.list_syndicate_join_sessions(syndicate_id, norm(opts)) })
+      end
+
+      def all(syndicate_id, **opts)
+        sessions = pages(opts) { |o| raw.syndicate_members.list_syndicate_join_sessions(syndicate_id, o) }
+        Enumerator.new { |y| sessions.each { |session| y << strings(session) } }
+      end
+
+      def get(syndicate_id, session_id)
+        strings(data_of(wrap { raw.syndicate_members.get_syndicate_join_session(syndicate_id, session_id) }))
+      end
+
+      # Mint a session for one person (+email:+ required). Needs a manager's user token or the syndicate's own.
+      def create(syndicate_id, **attrs)
+        body = WefunderGenerated::CreateSyndicateJoinSessionRequest.new(
+          join_session: WefunderGenerated::CreateSyndicateJoinSessionRequestJoinSession.new(attrs)
+        )
+        strings(data_of(wrap { raw.syndicate_members.create_syndicate_join_session(syndicate_id, body) }))
+      end
+
+      private
+
+      # The generated client parses an untyped +object+ response with symbol keys; hand it back the
+      # way the documented examples read it (+session["attributes"]["url"]+).
+      def strings(obj) = JSON.parse(JSON.generate(obj))
+    end
+
+    # /offerings/{id}/investment_sessions and /investment_sessions (read:investment_sessions /
+    # write:investment_sessions; beta). A session puts a known investor straight into checkout for one
+    # offering and tracks that one investment.
+    class InvestmentSessions < Namespace
+      # Every session your app created, across offerings; the envelope.
+      def list(**opts) = wrap { raw.partner_invites_sessions.list_investment_sessions(norm(opts)) }
+      def all(**opts) = pages(opts) { |o| raw.partner_invites_sessions.list_investment_sessions(o) }
+
+      def list_for_offering(offering_id, **opts)
+        wrap { raw.partner_invites_sessions.list_offering_investment_sessions(offering_id, norm(opts)) }
+      end
+
+      def all_for_offering(offering_id, **opts)
+        pages(opts) { |o| raw.partner_invites_sessions.list_offering_investment_sessions(offering_id, o) }
+      end
+
+      def get(session_id) = data_of(wrap { raw.partner_invites_sessions.get_investment_session(session_id) })
+
+      # Create a session on an offering; +idempotency_key:+ makes a retry safe.
+      def create(offering_id, idempotency_key: nil, **attrs)
+        body = WefunderGenerated::CreateOfferingInvestmentSessionRequest.new(
+          investment_session: WefunderGenerated::InvestmentSessionCreateInput.new(attrs)
+        )
+        opts = idempotency_key ? { idempotency_key: idempotency_key } : {}
+        data_of(wrap { raw.partner_invites_sessions.create_offering_investment_session(offering_id, body, opts) })
+      end
+
+      # Cancel a session the recipient has not completed.
+      def cancel(session_id) = data_of(wrap { raw.partner_invites_sessions.cancel_investment_session(session_id) })
+    end
+
+    # /offerings/{id}/member_links and /member_links/{id} (read:invite_links / write:invite_links):
+    # your app's per-person links that send a member to one deal page and report what they did.
+    # Needs a company- or syndicate-owned token of an app installed on the offering's syndicate or
+    # company; a user token gets 404.
+    class MemberLinks < Namespace
+      # One page of the offering's links; the envelope.
+      def list(offering_id, **opts) = wrap { raw.member_links.list_offering_member_links(offering_id, norm(opts)) }
+      def all(offering_id) = pages({}) { |o| raw.member_links.list_offering_member_links(offering_id, o) }
+
+      # Mint a link (+reference:+, optional +wefunder_user_id:+). Repeating a +reference+ returns the
+      # live link instead of a second one; +idempotency_key:+ makes a retried request safe as well.
+      def create(offering_id, idempotency_key: nil, **attrs)
+        opts = {}
+        opts[:idempotency_key] = idempotency_key if idempotency_key
+        unless attrs.empty?
+          opts[:create_offering_member_link_request] =
+            WefunderGenerated::CreateOfferingMemberLinkRequest.new(member_link: WefunderGenerated::MemberLinkCreateInput.new(attrs))
+        end
+        data_of(wrap { raw.member_links.create_offering_member_link(offering_id, opts) })
+      end
+
+      def get(link_id) = data_of(wrap { raw.member_links.get_member_link(link_id) })
+      # Stop an unused link from opening the deal page.
+      def cancel(link_id) = data_of(wrap { raw.member_links.cancel_member_link(link_id) })
+    end
+
+    # /referral_codes (read:referral_codes / write:referral_codes; beta). Mint with your app's server
+    # key, add +?wfr=ref_…+ to any wefunder.com link, and read +stats+. What +stats+ shows per company
+    # depends on its +level+: +counts+ is weekly cohorts (+weeks+), +anonymized+ is per-investment rows
+    # with opaque tokens (+investments+), and +full+, for an app installed on the company with a
+    # founder-tier grant, carries investor names and emails.
+    class ReferralCodes < Namespace
+      def list(**opts) = wrap { raw.referral_codes.list_referral_codes(norm(opts)) }
+      def all(**opts) = pages(opts) { |o| raw.referral_codes.list_referral_codes(o) }
+      def get(code_id) = data_of(wrap { raw.referral_codes.get_referral_code(code_id) })
+
+      # Not idempotent: a retried create can mint a second code, which you can deactivate.
+      def create(**attrs)
+        data_of(wrap { raw.referral_codes.create_referral_code(WefunderGenerated::CreateReferralCodeRequest.new(attrs)) })
+      end
+
+      def update(code_id, **changes)
+        body = WefunderGenerated::UpdateReferralCodeRequest.new(changes)
+        data_of(wrap { raw.referral_codes.update_referral_code(code_id, body) })
+      end
+
+      # Weekly cohorts per company; the envelope (+meta.next_cursor+ pages the company list).
+      def stats(code_id, **opts) = wrap { raw.referral_codes.get_referral_code_stats(code_id, norm(opts)) }
     end
 
     # /installations (read:installations / write:installations; write does not imply read). An

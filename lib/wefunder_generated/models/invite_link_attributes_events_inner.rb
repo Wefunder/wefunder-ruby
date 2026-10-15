@@ -17,6 +17,9 @@ module WefunderGenerated
   class InviteLinkAttributesEventsInner
     attr_accessor :event
 
+    # The account that acted (`usr_...`): the sender of a `send` or `resend`, or a signed-in visitor's click. Null when anonymous. Never an email. 
+    attr_accessor :wefunder_user_id
+
     attr_accessor :city
 
     attr_accessor :country_code
@@ -27,6 +30,7 @@ module WefunderGenerated
     def self.attribute_map
       {
         :'event' => :'event',
+        :'wefunder_user_id' => :'wefunder_user_id',
         :'city' => :'city',
         :'country_code' => :'country_code',
         :'created_at' => :'created_at'
@@ -42,6 +46,7 @@ module WefunderGenerated
     def self.openapi_types
       {
         :'event' => :'String',
+        :'wefunder_user_id' => :'String',
         :'city' => :'String',
         :'country_code' => :'String',
         :'created_at' => :'Time'
@@ -51,6 +56,7 @@ module WefunderGenerated
     # List of attributes with nullable: true
     def self.openapi_nullable
       Set.new([
+        :'wefunder_user_id',
         :'city',
         :'country_code',
       ])
@@ -73,6 +79,10 @@ module WefunderGenerated
 
       if attributes.key?(:'event')
         self.event = attributes[:'event']
+      end
+
+      if attributes.key?(:'wefunder_user_id')
+        self.wefunder_user_id = attributes[:'wefunder_user_id']
       end
 
       if attributes.key?(:'city')
@@ -109,6 +119,7 @@ module WefunderGenerated
       return true if self.equal?(o)
       self.class == o.class &&
           event == o.event &&
+          wefunder_user_id == o.wefunder_user_id &&
           city == o.city &&
           country_code == o.country_code &&
           created_at == o.created_at
@@ -123,7 +134,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [event, city, country_code, created_at].hash
+      [event, wefunder_user_id, city, country_code, created_at].hash
     end
 
     # Builds the object from hash

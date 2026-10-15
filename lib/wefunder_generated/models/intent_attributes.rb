@@ -117,6 +117,7 @@ module WefunderGenerated
     def self.openapi_nullable
       Set.new([
         :'resource_id',
+        :'impact_summary',
         :'requested_by_agent',
         :'expires_at',
         :'approved_at',

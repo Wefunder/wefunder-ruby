@@ -36,7 +36,7 @@ module WefunderGenerated
     def self.openapi_types
       {
         :'data' => :'InvestmentSession',
-        :'meta' => :'WebhookEndpointEnvelopeMeta'
+        :'meta' => :'ReferralCodeEnvelopeMeta'
       }
     end
 

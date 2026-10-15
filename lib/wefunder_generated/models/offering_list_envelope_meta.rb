@@ -18,13 +18,19 @@ module WefunderGenerated
     # Total number of offerings across all pages.
     attr_accessor :total_count
 
-    # Number of offerings on this page (at most 25).
+    # Number of offerings on this page (at most `per_page`).
     attr_accessor :page_count
 
     attr_accessor :has_more
 
-    # The sort applied to this response.
+    # The `status` applied to this response.
+    attr_accessor :status
+
+    # The sort applied to this response. `recently_closed` for `status=closed`, which has a fixed order.
     attr_accessor :sort
+
+    # True when the response is the logged-in (`read:explore`) view.
+    attr_accessor :personalized
 
     # The filters applied to this response (validated values), empty when none.
     attr_accessor :filters
@@ -32,13 +38,37 @@ module WefunderGenerated
     # Opaque pagination cursor — pass as `cursor` to fetch the next page. Present only when `has_more` is true.
     attr_accessor :next_cursor
 
+    class EnumAttributeValidator
+      attr_reader :datatype
+      attr_reader :allowable_values
+
+      def initialize(datatype, allowable_values)
+        @allowable_values = allowable_values.map do |value|
+          case datatype.to_s
+          when /Integer/i
+            value.to_i
+          when /Float/i
+            value.to_f
+          else
+            value
+          end
+        end
+      end
+
+      def valid?(value)
+        !value || allowable_values.include?(value)
+      end
+    end
+
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
       {
         :'total_count' => :'total_count',
         :'page_count' => :'page_count',
         :'has_more' => :'has_more',
+        :'status' => :'status',
         :'sort' => :'sort',
+        :'personalized' => :'personalized',
         :'filters' => :'filters',
         :'next_cursor' => :'next_cursor'
       }
@@ -55,7 +85,9 @@ module WefunderGenerated
         :'total_count' => :'Integer',
         :'page_count' => :'Integer',
         :'has_more' => :'Boolean',
+        :'status' => :'String',
         :'sort' => :'String',
+        :'personalized' => :'Boolean',
         :'filters' => :'Object',
         :'next_cursor' => :'Integer'
       }
@@ -95,8 +127,16 @@ module WefunderGenerated
         self.has_more = attributes[:'has_more']
       end
 
+      if attributes.key?(:'status')
+        self.status = attributes[:'status']
+      end
+
       if attributes.key?(:'sort')
         self.sort = attributes[:'sort']
+      end
+
+      if attributes.key?(:'personalized')
+        self.personalized = attributes[:'personalized']
       end
 
       if attributes.key?(:'filters')
@@ -120,7 +160,19 @@ module WefunderGenerated
     # @return true if the model is valid
     def valid?
       warn '[DEPRECATED] the `valid?` method is obsolete'
+      status_validator = EnumAttributeValidator.new('String', ["live", "closed", "all"])
+      return false unless status_validator.valid?(@status)
       true
+    end
+
+    # Custom attribute writer method checking allowed values (enum).
+    # @param [Object] status Object to be assigned
+    def status=(status)
+      validator = EnumAttributeValidator.new('String', ["live", "closed", "all"])
+      unless validator.valid?(status)
+        fail ArgumentError, "invalid value for \"status\", must be one of #{validator.allowable_values}."
+      end
+      @status = status
     end
 
     # Checks equality by comparing each attribute.
@@ -131,7 +183,9 @@ module WefunderGenerated
           total_count == o.total_count &&
           page_count == o.page_count &&
           has_more == o.has_more &&
+          status == o.status &&
           sort == o.sort &&
+          personalized == o.personalized &&
           filters == o.filters &&
           next_cursor == o.next_cursor
     end
@@ -145,7 +199,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [total_count, page_count, has_more, sort, filters, next_cursor].hash
+      [total_count, page_count, has_more, status, sort, personalized, filters, next_cursor].hash
     end
 
     # Builds the object from hash

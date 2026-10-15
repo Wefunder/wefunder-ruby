@@ -15,7 +15,14 @@ require 'time'
 
 module WefunderGenerated
   class WebhookEndpointAttributes
+    # The full URL. App-wide endpoints always carry it; an installation-bound endpoint carries it only in the create response that made it, and `url_hint` everywhere else. 
     attr_accessor :url
+
+    # Host plus the last six characters of a bound endpoint's URL, for recognition only.
+    attr_accessor :url_hint
+
+    # The installation this endpoint is bound to (`inst_…`), or null for an app-wide endpoint.
+    attr_accessor :installation
 
     attr_accessor :mode
 
@@ -61,6 +68,8 @@ module WefunderGenerated
     def self.attribute_map
       {
         :'url' => :'url',
+        :'url_hint' => :'url_hint',
+        :'installation' => :'installation',
         :'mode' => :'mode',
         :'events' => :'events',
         :'enabled' => :'enabled',
@@ -81,6 +90,8 @@ module WefunderGenerated
     def self.openapi_types
       {
         :'url' => :'String',
+        :'url_hint' => :'String',
+        :'installation' => :'String',
         :'mode' => :'String',
         :'events' => :'Array<String>',
         :'enabled' => :'Boolean',
@@ -95,6 +106,7 @@ module WefunderGenerated
     # List of attributes with nullable: true
     def self.openapi_nullable
       Set.new([
+        :'installation',
         :'failing_since',
         :'last_delivery_at',
         :'last_delivery_status',
@@ -118,6 +130,14 @@ module WefunderGenerated
 
       if attributes.key?(:'url')
         self.url = attributes[:'url']
+      end
+
+      if attributes.key?(:'url_hint')
+        self.url_hint = attributes[:'url_hint']
+      end
+
+      if attributes.key?(:'installation')
+        self.installation = attributes[:'installation']
       end
 
       if attributes.key?(:'mode')
@@ -188,6 +208,8 @@ module WefunderGenerated
       return true if self.equal?(o)
       self.class == o.class &&
           url == o.url &&
+          url_hint == o.url_hint &&
+          installation == o.installation &&
           mode == o.mode &&
           events == o.events &&
           enabled == o.enabled &&
@@ -207,7 +229,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [url, mode, events, enabled, secret, failing_since, last_delivery_at, last_delivery_status, created_at].hash
+      [url, url_hint, installation, mode, events, enabled, secret, failing_since, last_delivery_at, last_delivery_status, created_at].hash
     end
 
     # Builds the object from hash

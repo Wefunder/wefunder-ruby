@@ -94,6 +94,15 @@ Concurrent requests that hit a 401 at the same time share one refresh (the clien
 If several application instances can use the same OAuth connection, serialize refreshes for that
 connection yourself.
 
+## API version
+
+The SDK sends `Wefunder-Version: 2026-10-15` on every request (`DEFAULT_API_VERSION`); pass
+`api_version:` to pin an older one. 1.1.0 moved the default from the pre-launch `2025-01-15` alias:
+`GET /activity` and the syndicate deal `close` / `finalize` operations (and the
+`syndicates.close_deal` / `finalize_deal` intent actions) are not part of 2026-10-15, so their
+generated methods are gone; the legacy Attribution and attribution-webhook operations, removed
+from the API on 2026-10-14, left with them (`wf.attribution` is gone; use `wf.referral_codes`).
+
 ## Calling the API
 
 ```ruby
@@ -103,7 +112,8 @@ portfolio = wf.portfolio.get
 ```
 
 Namespaces: `users`, `offerings`, `investments`, `portfolio`, `campaigns`, `syndicates`, `intents`,
-`attribution`, `installations`, and `webhook_endpoints`. Query parameters are keyword arguments;
+`installations`, `member_links`, `referral_codes`, `join_sessions`, `investment_sessions`, and
+`webhook_endpoints`. Query parameters are keyword arguments;
 enum-typed ones take plain strings, and `Time` / `DateTime` / `Date` values are sent as ISO 8601.
 
 `wf.installations` lets your app act as a company or syndicate: `eligible_targets`, `create`,

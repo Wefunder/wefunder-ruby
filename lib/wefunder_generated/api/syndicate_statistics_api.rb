@@ -20,7 +20,7 @@ module WefunderGenerated
       @api_client = api_client
     end
     # Get syndicate statistics
-    # Returns aggregate metrics for a syndicate including member counts, deal counts, total raised, and recent activity.  `total_raised` and `total_investors` are computed from directory-selected deals (one per company). `total_deals` and `live_deals` use all linked deals.  `total_raised` is whole dollars as a string. 
+    # Returns aggregate metrics for a syndicate including member counts, deal counts, total raised, and recent activity.  `total_raised` and `total_investors` are computed from directory-selected deals (one per directory company: its live round, else its most recent successful round). `total_deals` counts the syndicate's visible deal set in every state (the rounds `GET /syndicates/{syndicate_id}/deals` draws from, which excludes invite-only companies' rounds and testing-the-waters rounds of directory companies); `live_deals` is the live subset of it, the rows that endpoint lists.  `total_raised` is whole dollars as a string. 
     # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
     # @param [Hash] opts the optional parameters
     # @return [SyndicateStatisticsEnvelope]
@@ -30,7 +30,7 @@ module WefunderGenerated
     end
 
     # Get syndicate statistics
-    # Returns aggregate metrics for a syndicate including member counts, deal counts, total raised, and recent activity.  &#x60;total_raised&#x60; and &#x60;total_investors&#x60; are computed from directory-selected deals (one per company). &#x60;total_deals&#x60; and &#x60;live_deals&#x60; use all linked deals.  &#x60;total_raised&#x60; is whole dollars as a string. 
+    # Returns aggregate metrics for a syndicate including member counts, deal counts, total raised, and recent activity.  &#x60;total_raised&#x60; and &#x60;total_investors&#x60; are computed from directory-selected deals (one per directory company: its live round, else its most recent successful round). &#x60;total_deals&#x60; counts the syndicate&#39;s visible deal set in every state (the rounds &#x60;GET /syndicates/{syndicate_id}/deals&#x60; draws from, which excludes invite-only companies&#39; rounds and testing-the-waters rounds of directory companies); &#x60;live_deals&#x60; is the live subset of it, the rows that endpoint lists.  &#x60;total_raised&#x60; is whole dollars as a string. 
     # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
     # @param [Hash] opts the optional parameters
     # @return [Array<(SyndicateStatisticsEnvelope, Integer, Hash)>] SyndicateStatisticsEnvelope data, response status code and response headers

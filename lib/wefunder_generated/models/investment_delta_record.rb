@@ -14,7 +14,7 @@ require 'date'
 require 'time'
 
 module WefunderGenerated
-  # The record of one investment, or a tombstone (`visible: false`, only `id`). `visible` is founder visibility: a user's own canceled investment is a full record with `visible: false` and `status: canceled`. Investor PII keys are omitted without `read:investors:pii`, except on the user's own records. 
+  # The record of one investment, or a tombstone. A tombstone is `visible: false` with `id` and the sync metadata (`observed_at`, `cursor`, `reason`) and no payload fields: no `status`, `amounts`, `investor`. `visible` is founder visibility: a user's own canceled investment is a full record with `visible: false` and `status: canceled`, so tell the two apart by the presence of `status`, not by `visible`. Investor PII keys are omitted without `read:investors:pii`, except on the user's own records. 
   class InvestmentDeltaRecord
     # Investment external id (`inv_…`), stable for the life of the investment.
     attr_accessor :id
@@ -71,7 +71,7 @@ module WefunderGenerated
     # Ledger position of the change that listed this record (delta pages only).
     attr_accessor :cursor
 
-    # Why the ledger row exists. `investor_deactivated` marks the first republish after the investor's account was deactivated (identity fields redacted). Delta pages only. 
+    # Why the ledger row exists. Delta pages only; `null` on list pages and on retrieve. Every value is a record to upsert. `changed`: a partner-visible field moved. `recomputed`: the investment's inputs did not change and the record moved only because Wefunder changed how it derives a field; sync it, but a notification rule may skip it. `reprojected`: the retired name for `recomputed`, still served on rows published before the rename for as long as they are retained (90 days); treat it exactly like `recomputed`. `investor_deactivated` marks the first republish after the investor's account was deactivated (identity fields redacted). 
     attr_accessor :reason
 
     class EnumAttributeValidator
@@ -320,7 +320,7 @@ module WefunderGenerated
       status_validator = EnumAttributeValidator.new('String', ["reserved", "active", "executed", "canceled", "converted"])
       return false unless status_validator.valid?(@status)
       return false if @observed_at.nil?
-      reason_validator = EnumAttributeValidator.new('String', ["changed", "reprojected", "investor_deactivated"])
+      reason_validator = EnumAttributeValidator.new('String', ["changed", "recomputed", "reprojected", "investor_deactivated"])
       return false unless reason_validator.valid?(@reason)
       true
     end
@@ -338,7 +338,7 @@ module WefunderGenerated
     # Custom attribute writer method checking allowed values (enum).
     # @param [Object] reason Object to be assigned
     def reason=(reason)
-      validator = EnumAttributeValidator.new('String', ["changed", "reprojected", "investor_deactivated"])
+      validator = EnumAttributeValidator.new('String', ["changed", "recomputed", "reprojected", "investor_deactivated"])
       unless validator.valid?(reason)
         fail ArgumentError, "invalid value for \"reason\", must be one of #{validator.allowable_values}."
       end

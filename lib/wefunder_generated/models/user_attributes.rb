@@ -14,6 +14,7 @@ require 'date'
 require 'time'
 
 module WefunderGenerated
+  # Present only when the token holds `read:profile`. Without it, `GET /users/me` returns just `id` and `type`. 
   class UserAttributes
     attr_accessor :email
 

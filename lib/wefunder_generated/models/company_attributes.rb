@@ -28,6 +28,30 @@ module WefunderGenerated
 
     attr_accessor :location
 
+    # The company's legal name, as the company entered it. The name on a filed Form C is `business.legal_name` in `/disclosures`.
+    attr_accessor :legal_name
+
+    # The company's legal form as the company entered it, free text and not normalized (e.g. \"Corporation\", \"Limited Liability Company\", \"llc\"). The form on a filed Form C is `business.legal_form` in `/disclosures`. The EIN is deliberately not served. 
+    attr_accessor :legal_form
+
+    # The company's website, as an absolute URL. Null when none is set or the stored value is not a usable link.
+    attr_accessor :website_url
+
+    # The company's X (Twitter) profile, as an absolute URL (a stored handle is expanded). Null when none is set.
+    attr_accessor :twitter_url
+
+    # The company's LinkedIn page, as an absolute URL. Null when none is set.
+    attr_accessor :linkedin_url
+
+    # The company's Facebook page, as an absolute URL. Null when none is set.
+    attr_accessor :facebook_url
+
+    # The company's Instagram profile, as an absolute URL. Null when none is set.
+    attr_accessor :instagram_url
+
+    # The company's answer to \"Who should be able to see your campaign?\" on wefunder.com: true for \"as public as possible\" (eligible for the Explore page and Wefunder's marketing), false for \"as private as possible\". False does not hide the company or its rounds — anything this API returns is visible to the caller — but the company has asked not to be promoted, so an app that redistributes listings should respect it. 
+    attr_accessor :promotion_opt_in
+
     # True when the round the page shows this viewer is live (accepting investments or reservations). False for a funded company, or one with no round the viewer may see.
     attr_accessor :raising
 
@@ -51,6 +75,14 @@ module WefunderGenerated
         :'logo_url' => :'logo_url',
         :'card_image_url' => :'card_image_url',
         :'location' => :'location',
+        :'legal_name' => :'legal_name',
+        :'legal_form' => :'legal_form',
+        :'website_url' => :'website_url',
+        :'twitter_url' => :'twitter_url',
+        :'linkedin_url' => :'linkedin_url',
+        :'facebook_url' => :'facebook_url',
+        :'instagram_url' => :'instagram_url',
+        :'promotion_opt_in' => :'promotion_opt_in',
         :'raising' => :'raising',
         :'current_raise' => :'current_raise',
         :'past_rounds' => :'past_rounds',
@@ -73,6 +105,14 @@ module WefunderGenerated
         :'logo_url' => :'String',
         :'card_image_url' => :'String',
         :'location' => :'CompanyAttributesLocation',
+        :'legal_name' => :'String',
+        :'legal_form' => :'String',
+        :'website_url' => :'String',
+        :'twitter_url' => :'String',
+        :'linkedin_url' => :'String',
+        :'facebook_url' => :'String',
+        :'instagram_url' => :'String',
+        :'promotion_opt_in' => :'Boolean',
         :'raising' => :'Boolean',
         :'current_raise' => :'CurrentRaise',
         :'past_rounds' => :'Array<PastRound>',
@@ -88,6 +128,13 @@ module WefunderGenerated
         :'url',
         :'logo_url',
         :'card_image_url',
+        :'legal_name',
+        :'legal_form',
+        :'website_url',
+        :'twitter_url',
+        :'linkedin_url',
+        :'facebook_url',
+        :'instagram_url',
         :'current_raise',
       ])
     end
@@ -129,6 +176,38 @@ module WefunderGenerated
 
       if attributes.key?(:'location')
         self.location = attributes[:'location']
+      end
+
+      if attributes.key?(:'legal_name')
+        self.legal_name = attributes[:'legal_name']
+      end
+
+      if attributes.key?(:'legal_form')
+        self.legal_form = attributes[:'legal_form']
+      end
+
+      if attributes.key?(:'website_url')
+        self.website_url = attributes[:'website_url']
+      end
+
+      if attributes.key?(:'twitter_url')
+        self.twitter_url = attributes[:'twitter_url']
+      end
+
+      if attributes.key?(:'linkedin_url')
+        self.linkedin_url = attributes[:'linkedin_url']
+      end
+
+      if attributes.key?(:'facebook_url')
+        self.facebook_url = attributes[:'facebook_url']
+      end
+
+      if attributes.key?(:'instagram_url')
+        self.instagram_url = attributes[:'instagram_url']
+      end
+
+      if attributes.key?(:'promotion_opt_in')
+        self.promotion_opt_in = attributes[:'promotion_opt_in']
       end
 
       if attributes.key?(:'raising')
@@ -182,6 +261,14 @@ module WefunderGenerated
           logo_url == o.logo_url &&
           card_image_url == o.card_image_url &&
           location == o.location &&
+          legal_name == o.legal_name &&
+          legal_form == o.legal_form &&
+          website_url == o.website_url &&
+          twitter_url == o.twitter_url &&
+          linkedin_url == o.linkedin_url &&
+          facebook_url == o.facebook_url &&
+          instagram_url == o.instagram_url &&
+          promotion_opt_in == o.promotion_opt_in &&
           raising == o.raising &&
           current_raise == o.current_raise &&
           past_rounds == o.past_rounds &&
@@ -198,7 +285,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [name, tagline, url, logo_url, card_image_url, location, raising, current_raise, past_rounds, wefunder_rounds, totals].hash
+      [name, tagline, url, logo_url, card_image_url, location, legal_name, legal_form, website_url, twitter_url, linkedin_url, facebook_url, instagram_url, promotion_opt_in, raising, current_raise, past_rounds, wefunder_rounds, totals].hash
     end
 
     # Builds the object from hash

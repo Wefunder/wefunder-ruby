@@ -26,8 +26,11 @@ module WefunderGenerated
     # Fixed investment amount, in cents (whole dollars only). Locks the checkout to exactly this value, overriding the SPV's min/max purchase range. Omit to let the recipient choose an amount within that range. 
     attr_accessor :allocation_cents
 
-    # Where to send the recipient after they complete the session.
+    # Where to send the recipient after they complete the session. An absolute `https` URL on the origin (scheme, host and port) of one of your app's registered OAuth redirect URIs, such as an iOS universal link or Android app link, or a URL in a custom scheme one of those redirect URIs uses (`com.partner.app://checkout/done`). `http` is accepted only on a loopback host one of your redirect URIs uses. Anything else is a `422 validation_error`. See [Investment sessions on mobile](/guides/investment-sessions-mobile). 
     attr_accessor :success_url
+
+    # Where to send the recipient when they cancel the session on the hosted page, or open it after it was canceled or expired. Same rules as `success_url`: an `https` URL on a registered redirect URI's origin, or a URL in a registered custom scheme. Wefunder appends `session_id` (the session's `is_` id) and `reason` to the query string, keeping any parameters already on the URL. `reason` is `user_canceled` (the session is now canceled), `user_left` (the investor had already started checkout, so the session stays active until it completes or expires), `canceled` or `expired`. 
+    attr_accessor :cancel_url
 
     # Session lifetime in hours (default 720, i.e. 30 days).
     attr_accessor :expires_in_hours
@@ -46,6 +49,7 @@ module WefunderGenerated
         :'wefunder_user_id' => :'wefunder_user_id',
         :'allocation_cents' => :'allocation_cents',
         :'success_url' => :'success_url',
+        :'cancel_url' => :'cancel_url',
         :'expires_in_hours' => :'expires_in_hours',
         :'metadata' => :'metadata',
         :'intent_id' => :'intent_id'
@@ -65,6 +69,7 @@ module WefunderGenerated
         :'wefunder_user_id' => :'String',
         :'allocation_cents' => :'Integer',
         :'success_url' => :'String',
+        :'cancel_url' => :'String',
         :'expires_in_hours' => :'Integer',
         :'metadata' => :'Object',
         :'intent_id' => :'String'
@@ -79,6 +84,7 @@ module WefunderGenerated
         :'wefunder_user_id',
         :'allocation_cents',
         :'success_url',
+        :'cancel_url',
         :'expires_in_hours',
         :'metadata',
         :'intent_id'
@@ -118,6 +124,10 @@ module WefunderGenerated
 
       if attributes.key?(:'success_url')
         self.success_url = attributes[:'success_url']
+      end
+
+      if attributes.key?(:'cancel_url')
+        self.cancel_url = attributes[:'cancel_url']
       end
 
       if attributes.key?(:'expires_in_hours')
@@ -197,6 +207,7 @@ module WefunderGenerated
           wefunder_user_id == o.wefunder_user_id &&
           allocation_cents == o.allocation_cents &&
           success_url == o.success_url &&
+          cancel_url == o.cancel_url &&
           expires_in_hours == o.expires_in_hours &&
           metadata == o.metadata &&
           intent_id == o.intent_id
@@ -211,7 +222,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [spv_id, email, wefunder_user_id, allocation_cents, success_url, expires_in_hours, metadata, intent_id].hash
+      [spv_id, email, wefunder_user_id, allocation_cents, success_url, cancel_url, expires_in_hours, metadata, intent_id].hash
     end
 
     # Builds the object from hash

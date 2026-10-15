@@ -14,7 +14,7 @@ require 'date'
 require 'time'
 
 module WefunderGenerated
-  # The offering's issue terms. Fields are null when the term does not apply to the security type.
+  # The offering's issue terms. A field is null when the term does not apply to the security type, and also when the security has none: an uncapped SAFE or note has a null `note_cap_cents` (with `uncapped: true`), and a security with no discount, including one recorded as zero, has a null `note_discount`.
   class PortfolioSecurityTerms
     # Issue price per share as a decimal string
     attr_accessor :share_price
@@ -22,8 +22,13 @@ module WefunderGenerated
     # Lower-case ISO 4217 code of `note_cap_cents` and `premoney_valuation_cents`, the currency the founder entered them in. USD when the round's terms are explicitly USD-denominated (checkout prices them in USD then); otherwise a SAFE's cap is in the round's declared financials currency (falling back to the round's), while equity pre-money and a convertible note's valuation are in the round currency. A EUR-funded SAFE can therefore carry a `usd` or `dkk` cap. `share_price` and every other `_cents` field on the position stay in the position's top-level `currency`.
     attr_accessor :currency
 
+    # The valuation cap of a SAFE or convertible note, in cents of `terms.currency`. Null when the security is uncapped (see `uncapped`) or has no cap.
     attr_accessor :note_cap_cents
 
+    # `true` when a SAFE or convertible note has no valuation cap, `false` when it has one. Null for securities that never carry a cap (equity, revenue share, debt, fund, other). Same rule as `uncapped` in an offering's `security.terms`.
+    attr_accessor :uncapped
+
+    # Conversion discount as a decimal string percentage (`\"20.0\"` is 20%). Null when there is no discount, including a discount recorded as zero, the same as `discount_percent` in an offering's `security.terms`.
     attr_accessor :note_discount
 
     attr_accessor :premoney_valuation_cents
@@ -34,6 +39,7 @@ module WefunderGenerated
         :'share_price' => :'share_price',
         :'currency' => :'currency',
         :'note_cap_cents' => :'note_cap_cents',
+        :'uncapped' => :'uncapped',
         :'note_discount' => :'note_discount',
         :'premoney_valuation_cents' => :'premoney_valuation_cents'
       }
@@ -50,6 +56,7 @@ module WefunderGenerated
         :'share_price' => :'String',
         :'currency' => :'String',
         :'note_cap_cents' => :'Integer',
+        :'uncapped' => :'Boolean',
         :'note_discount' => :'String',
         :'premoney_valuation_cents' => :'Integer'
       }
@@ -60,6 +67,7 @@ module WefunderGenerated
       Set.new([
         :'share_price',
         :'note_cap_cents',
+        :'uncapped',
         :'note_discount',
         :'premoney_valuation_cents'
       ])
@@ -90,6 +98,10 @@ module WefunderGenerated
 
       if attributes.key?(:'note_cap_cents')
         self.note_cap_cents = attributes[:'note_cap_cents']
+      end
+
+      if attributes.key?(:'uncapped')
+        self.uncapped = attributes[:'uncapped']
       end
 
       if attributes.key?(:'note_discount')
@@ -124,6 +136,7 @@ module WefunderGenerated
           share_price == o.share_price &&
           currency == o.currency &&
           note_cap_cents == o.note_cap_cents &&
+          uncapped == o.uncapped &&
           note_discount == o.note_discount &&
           premoney_valuation_cents == o.premoney_valuation_cents
     end
@@ -137,7 +150,7 @@ module WefunderGenerated
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [share_price, currency, note_cap_cents, note_discount, premoney_valuation_cents].hash
+      [share_price, currency, note_cap_cents, uncapped, note_discount, premoney_valuation_cents].hash
     end
 
     # Builds the object from hash

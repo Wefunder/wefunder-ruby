@@ -88,6 +88,80 @@ module WefunderGenerated
       return data, status_code, headers
     end
 
+    # Create a join session
+    # Mint a hosted join session that turns an invitee into a member of a syndicate you manage. The session is bound to one email; the recipient completes the join on `wefunder.com/join/session/{id}`, and you learn the outcome by polling this session or via `join_session.*` webhooks.  Requires `write:syndicate_members` (included in `write:syndicates`), operator permission, and an active installation of your app on the syndicate. Phase 1 supports `mode: hosted` only. 
+    # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
+    # @param create_syndicate_join_session_request [CreateSyndicateJoinSessionRequest] 
+    # @param [Hash] opts the optional parameters
+    # @return [Object]
+    def create_syndicate_join_session(syndicate_id, create_syndicate_join_session_request, opts = {})
+      data, _status_code, _headers = create_syndicate_join_session_with_http_info(syndicate_id, create_syndicate_join_session_request, opts)
+      data
+    end
+
+    # Create a join session
+    # Mint a hosted join session that turns an invitee into a member of a syndicate you manage. The session is bound to one email; the recipient completes the join on &#x60;wefunder.com/join/session/{id}&#x60;, and you learn the outcome by polling this session or via &#x60;join_session.*&#x60; webhooks.  Requires &#x60;write:syndicate_members&#x60; (included in &#x60;write:syndicates&#x60;), operator permission, and an active installation of your app on the syndicate. Phase 1 supports &#x60;mode: hosted&#x60; only. 
+    # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
+    # @param create_syndicate_join_session_request [CreateSyndicateJoinSessionRequest] 
+    # @param [Hash] opts the optional parameters
+    # @return [Array<(Object, Integer, Hash)>] Object data, response status code and response headers
+    def create_syndicate_join_session_with_http_info(syndicate_id, create_syndicate_join_session_request, opts = {})
+      if @api_client.config.debugging
+        @api_client.config.logger.debug 'Calling API: SyndicateMembersApi.create_syndicate_join_session ...'
+      end
+      # verify the required parameter 'syndicate_id' is set
+      if @api_client.config.client_side_validation && syndicate_id.nil?
+        fail ArgumentError, "Missing the required parameter 'syndicate_id' when calling SyndicateMembersApi.create_syndicate_join_session"
+      end
+      # verify the required parameter 'create_syndicate_join_session_request' is set
+      if @api_client.config.client_side_validation && create_syndicate_join_session_request.nil?
+        fail ArgumentError, "Missing the required parameter 'create_syndicate_join_session_request' when calling SyndicateMembersApi.create_syndicate_join_session"
+      end
+      # resource path
+      local_var_path = '/syndicates/{syndicate_id}/join_sessions'.sub('{' + 'syndicate_id' + '}', CGI.escape(syndicate_id.to_s))
+
+      # query parameters
+      query_params = opts[:query_params] || {}
+
+      # header parameters
+      header_params = opts[:header_params] || {}
+      # HTTP header 'Accept' (if needed)
+      header_params['Accept'] = @api_client.select_header_accept(['application/json']) unless header_params['Accept']
+      # HTTP header 'Content-Type'
+      content_type = @api_client.select_header_content_type(['application/json'])
+      if !content_type.nil?
+          header_params['Content-Type'] = content_type
+      end
+
+      # form parameters
+      form_params = opts[:form_params] || {}
+
+      # http body (model)
+      post_body = opts[:debug_body] || @api_client.object_to_http_body(create_syndicate_join_session_request)
+
+      # return_type
+      return_type = opts[:debug_return_type] || 'Object'
+
+      # auth_names
+      auth_names = opts[:debug_auth_names] || ['bearerAuth', 'bearerAuth']
+
+      new_options = opts.merge(
+        :operation => :"SyndicateMembersApi.create_syndicate_join_session",
+        :header_params => header_params,
+        :query_params => query_params,
+        :form_params => form_params,
+        :body => post_body,
+        :auth_names => auth_names,
+        :return_type => return_type
+      )
+
+      data, status_code, headers = @api_client.call_api(:POST, local_var_path, new_options)
+      if @api_client.config.debugging
+        @api_client.config.logger.debug "API called: SyndicateMembersApi#create_syndicate_join_session\nData: #{data.inspect}\nStatus code: #{status_code}\nHeaders: #{headers}"
+      end
+      return data, status_code, headers
+    end
+
     # Demote member to operator
     # Demote a member from full_access (admin) to operator permission.
     # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
@@ -216,6 +290,75 @@ module WefunderGenerated
       data, status_code, headers = @api_client.call_api(:POST, local_var_path, new_options)
       if @api_client.config.debugging
         @api_client.config.logger.debug "API called: SyndicateMembersApi#export_syndicate_members_csv\nData: #{data.inspect}\nStatus code: #{status_code}\nHeaders: #{headers}"
+      end
+      return data, status_code, headers
+    end
+
+    # Get a join session
+    # Fetch one join session your app's installation minted on this syndicate, by its `js_` id. Poll this to learn the session's current status. 
+    # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
+    # @param id [String] The join session&#39;s &#x60;js_&#x60; id.
+    # @param [Hash] opts the optional parameters
+    # @return [Object]
+    def get_syndicate_join_session(syndicate_id, id, opts = {})
+      data, _status_code, _headers = get_syndicate_join_session_with_http_info(syndicate_id, id, opts)
+      data
+    end
+
+    # Get a join session
+    # Fetch one join session your app&#39;s installation minted on this syndicate, by its &#x60;js_&#x60; id. Poll this to learn the session&#39;s current status. 
+    # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
+    # @param id [String] The join session&#39;s &#x60;js_&#x60; id.
+    # @param [Hash] opts the optional parameters
+    # @return [Array<(Object, Integer, Hash)>] Object data, response status code and response headers
+    def get_syndicate_join_session_with_http_info(syndicate_id, id, opts = {})
+      if @api_client.config.debugging
+        @api_client.config.logger.debug 'Calling API: SyndicateMembersApi.get_syndicate_join_session ...'
+      end
+      # verify the required parameter 'syndicate_id' is set
+      if @api_client.config.client_side_validation && syndicate_id.nil?
+        fail ArgumentError, "Missing the required parameter 'syndicate_id' when calling SyndicateMembersApi.get_syndicate_join_session"
+      end
+      # verify the required parameter 'id' is set
+      if @api_client.config.client_side_validation && id.nil?
+        fail ArgumentError, "Missing the required parameter 'id' when calling SyndicateMembersApi.get_syndicate_join_session"
+      end
+      # resource path
+      local_var_path = '/syndicates/{syndicate_id}/join_sessions/{id}'.sub('{' + 'syndicate_id' + '}', CGI.escape(syndicate_id.to_s)).sub('{' + 'id' + '}', CGI.escape(id.to_s))
+
+      # query parameters
+      query_params = opts[:query_params] || {}
+
+      # header parameters
+      header_params = opts[:header_params] || {}
+      # HTTP header 'Accept' (if needed)
+      header_params['Accept'] = @api_client.select_header_accept(['application/json']) unless header_params['Accept']
+
+      # form parameters
+      form_params = opts[:form_params] || {}
+
+      # http body (model)
+      post_body = opts[:debug_body]
+
+      # return_type
+      return_type = opts[:debug_return_type] || 'Object'
+
+      # auth_names
+      auth_names = opts[:debug_auth_names] || ['bearerAuth', 'bearerAuth']
+
+      new_options = opts.merge(
+        :operation => :"SyndicateMembersApi.get_syndicate_join_session",
+        :header_params => header_params,
+        :query_params => query_params,
+        :form_params => form_params,
+        :body => post_body,
+        :auth_names => auth_names,
+        :return_type => return_type
+      )
+
+      data, status_code, headers = @api_client.call_api(:GET, local_var_path, new_options)
+      if @api_client.config.debugging
+        @api_client.config.logger.debug "API called: SyndicateMembersApi#get_syndicate_join_session\nData: #{data.inspect}\nStatus code: #{status_code}\nHeaders: #{headers}"
       end
       return data, status_code, headers
     end
@@ -359,6 +502,79 @@ module WefunderGenerated
       data, status_code, headers = @api_client.call_api(:POST, local_var_path, new_options)
       if @api_client.config.debugging
         @api_client.config.logger.debug "API called: SyndicateMembersApi#invite_syndicate_member\nData: #{data.inspect}\nStatus code: #{status_code}\nHeaders: #{headers}"
+      end
+      return data, status_code, headers
+    end
+
+    # List join sessions
+    # List the join sessions your app's installation minted on this syndicate. Sessions are install-scoped: you only see the ones your own install created. 
+    # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
+    # @param [Hash] opts the optional parameters
+    # @option opts [String] :cursor Opaque cursor from the previous response&#39;s &#x60;meta.next_cursor&#x60;.
+    # @option opts [Integer] :per_page Results per page, 1-100. Defaults to 25. (default to 25)
+    # @return [Object]
+    def list_syndicate_join_sessions(syndicate_id, opts = {})
+      data, _status_code, _headers = list_syndicate_join_sessions_with_http_info(syndicate_id, opts)
+      data
+    end
+
+    # List join sessions
+    # List the join sessions your app&#39;s installation minted on this syndicate. Sessions are install-scoped: you only see the ones your own install created. 
+    # @param syndicate_id [String] The syndicate&#39;s id (&#x60;syn_...&#x60;).
+    # @param [Hash] opts the optional parameters
+    # @option opts [String] :cursor Opaque cursor from the previous response&#39;s &#x60;meta.next_cursor&#x60;.
+    # @option opts [Integer] :per_page Results per page, 1-100. Defaults to 25. (default to 25)
+    # @return [Array<(Object, Integer, Hash)>] Object data, response status code and response headers
+    def list_syndicate_join_sessions_with_http_info(syndicate_id, opts = {})
+      if @api_client.config.debugging
+        @api_client.config.logger.debug 'Calling API: SyndicateMembersApi.list_syndicate_join_sessions ...'
+      end
+      # verify the required parameter 'syndicate_id' is set
+      if @api_client.config.client_side_validation && syndicate_id.nil?
+        fail ArgumentError, "Missing the required parameter 'syndicate_id' when calling SyndicateMembersApi.list_syndicate_join_sessions"
+      end
+      if @api_client.config.client_side_validation && !opts[:'per_page'].nil? && opts[:'per_page'] > 100
+        fail ArgumentError, 'invalid value for "opts[:"per_page"]" when calling SyndicateMembersApi.list_syndicate_join_sessions, must be smaller than or equal to 100.'
+      end
+
+      # resource path
+      local_var_path = '/syndicates/{syndicate_id}/join_sessions'.sub('{' + 'syndicate_id' + '}', CGI.escape(syndicate_id.to_s))
+
+      # query parameters
+      query_params = opts[:query_params] || {}
+      query_params[:'cursor'] = opts[:'cursor'] if !opts[:'cursor'].nil?
+      query_params[:'per_page'] = opts[:'per_page'] if !opts[:'per_page'].nil?
+
+      # header parameters
+      header_params = opts[:header_params] || {}
+      # HTTP header 'Accept' (if needed)
+      header_params['Accept'] = @api_client.select_header_accept(['application/json']) unless header_params['Accept']
+
+      # form parameters
+      form_params = opts[:form_params] || {}
+
+      # http body (model)
+      post_body = opts[:debug_body]
+
+      # return_type
+      return_type = opts[:debug_return_type] || 'Object'
+
+      # auth_names
+      auth_names = opts[:debug_auth_names] || ['bearerAuth', 'bearerAuth']
+
+      new_options = opts.merge(
+        :operation => :"SyndicateMembersApi.list_syndicate_join_sessions",
+        :header_params => header_params,
+        :query_params => query_params,
+        :form_params => form_params,
+        :body => post_body,
+        :auth_names => auth_names,
+        :return_type => return_type
+      )
+
+      data, status_code, headers = @api_client.call_api(:GET, local_var_path, new_options)
+      if @api_client.config.debugging
+        @api_client.config.logger.debug "API called: SyndicateMembersApi#list_syndicate_join_sessions\nData: #{data.inspect}\nStatus code: #{status_code}\nHeaders: #{headers}"
       end
       return data, status_code, headers
     end
