@@ -112,7 +112,8 @@ portfolio = wf.portfolio.get
 ```
 
 Namespaces: `users`, `offerings`, `investments`, `portfolio`, `campaigns`, `syndicates`, `intents`,
-`installations`, `member_links`, `referral_codes`, and `webhook_endpoints`. Query parameters are keyword arguments;
+`installations`, `member_links`, `referral_codes`, `join_sessions`, `investment_sessions`, and
+`webhook_endpoints`. Query parameters are keyword arguments;
 enum-typed ones take plain strings, and `Time` / `DateTime` / `Date` values are sent as ISO 8601.
 
 `wf.installations` lets your app act as a company or syndicate: `eligible_targets`, `create`,

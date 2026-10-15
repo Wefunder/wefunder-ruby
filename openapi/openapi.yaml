@@ -3489,6 +3489,166 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /syndicates/{syndicate_id}/join_sessions:
+    post:
+      tags:
+        - Syndicate Members
+      summary: Create a join session
+      description: |
+        Mint a hosted join session that turns an invitee into a member of a
+        syndicate you manage. The session is bound to one email; the recipient
+        completes the join on `wefunder.com/join/session/{id}`, and you learn the
+        outcome by polling this session or via `join_session.*` webhooks.
+
+        Requires `write:syndicate_members` (included in `write:syndicates`),
+        operator permission, and an active installation of your app on the
+        syndicate. Phase 1 supports `mode: hosted` only.
+      operationId: createSyndicateJoinSession
+      x-wf-stability: beta
+      security:
+        - bearerAuth:
+            - write:syndicate_members
+      parameters:
+        - $ref: '#/components/parameters/syndicate_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - join_session
+              properties:
+                join_session:
+                  type: object
+                  required:
+                    - email
+                  properties:
+                    email:
+                      type: string
+                      format: email
+                      example: jane@example.com
+                    name:
+                      type: string
+                      example: Jane Smith
+                    mode:
+                      type: string
+                      enum:
+                        - hosted
+                      default: hosted
+                    display:
+                      type: string
+                      enum:
+                        - redirect
+                        - popup
+                    require_approval:
+                      type: boolean
+                      description: Whether the resulting membership needs manager approval before it is joined.
+                    success_url:
+                      type: string
+                      format: uri
+                      description: HTTPS URL to send the recipient to after they finish.
+                    cancel_url:
+                      type: string
+                      format: uri
+                      description: HTTPS URL to send the recipient to if they cancel.
+      responses:
+        '201':
+          description: Join session created
+          content:
+            application/json:
+              schema:
+                type: object
+              example: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: |
+            The request could not be fulfilled: the app is not installed on this
+            syndicate (`app_not_installed`), the syndicate requires a subscription
+            to join (`syndicate_requires_subscription`), the syndicate requires a
+            fund investment to join (`syndicate_requires_fund_investment`), the mode
+            is unsupported (`unsupported_mode`), or a success/cancel URL is not https
+            (`invalid_success_url` / `invalid_cancel_url`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+        - Syndicate Members
+      summary: List join sessions
+      description: |
+        List the join sessions your app's installation minted on this syndicate.
+        Sessions are install-scoped: you only see the ones your own install created.
+      operationId: listSyndicateJoinSessions
+      x-wf-stability: beta
+      security:
+        - bearerAuth:
+            - read:syndicates
+      parameters:
+        - $ref: '#/components/parameters/syndicate_id'
+        - name: cursor
+          in: query
+          schema:
+            type: string
+          description: Opaque cursor from the previous response's `meta.next_cursor`.
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 25
+            maximum: 100
+          description: Results per page, 1-100. Defaults to 25.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+              example: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /syndicates/{syndicate_id}/join_sessions/{id}:
+    get:
+      tags:
+        - Syndicate Members
+      summary: Get a join session
+      description: |
+        Fetch one join session your app's installation minted on this syndicate,
+        by its `js_` id. Poll this to learn the session's current status.
+      operationId: getSyndicateJoinSession
+      x-wf-stability: beta
+      security:
+        - bearerAuth:
+            - read:syndicates
+      parameters:
+        - $ref: '#/components/parameters/syndicate_id'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The join session's `js_` id.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+              example: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /syndicates/{syndicate_id}/deals:
     get:
       tags:
@@ -6220,6 +6380,357 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /offerings/{id}/investment_sessions:
+    get:
+      x-wf-stability: beta
+      tags:
+        - Partner Invites & Sessions
+      summary: List investment sessions
+      description: |
+        Lists the investment sessions your app created on this offering, newest first;
+        filter by `status`. A session belongs to the application that created it: no other
+        app sees it, even one of your organization. A syndicate- or company-owned token sees
+        only its own syndicate's or company's sessions. An offering with none of your app's
+        sessions lists nothing, so the id reveals nothing about the offering.
+      operationId: listOfferingInvestmentSessions
+      security:
+        - bearerAuth:
+            - read:investment_sessions
+      parameters:
+        - $ref: '#/components/parameters/spv_id'
+        - name: status
+          in: query
+          description: Only sessions in this state
+          schema:
+            type: string
+            enum:
+              - pending
+              - in_progress
+              - completed
+              - abandoned
+              - expired
+              - canceled
+        - name: per_page
+          in: query
+          description: Page size (default 25, max 100)
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/cursor'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvestmentSessionListEnvelope'
+              example:
+                data:
+                  - id: is_abc123
+                    type: investment_session
+                    attributes:
+                      status: pending
+                      url: https://wefunder.com/invest/session/is_abc123
+                      spv_id: spv_abc123
+                      email: investor@example.com
+                      allocation_cents: 5000000
+                      kyc_status: pending
+                      funding_status: pending
+                      investment_id: invt_def789
+                      metadata: {}
+                      created_at: '2025-01-15T10:00:00Z'
+                      expires_at: '2026-01-15T17:30:00Z'
+                      events:
+                        - id: evt_abc123
+                          event: investment_session.completed
+                          occurred_at: '2026-01-15T17:30:00Z'
+                meta:
+                  has_more: true
+                  page_count: 1
+                  request_id: string
+                  next_cursor: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    post:
+      x-wf-stability: beta
+      tags:
+        - Partner Invites & Sessions
+      summary: Create an investment session
+      description: |
+        Canonical path: the offering comes from the URL, so `spv_id` may be
+        omitted from the body (if sent it must match, else 422 `offering_mismatch`).
+        Authorized for any offering the caller may act on (an install on its
+        syndicate or company, a role on it, or created by your app).
+
+        Creates a single-use, recipient-specific hosted investment session (analogous to
+        a Stripe Checkout Session) on the SPV named by `spv_id` in the body. The session
+        walks one investor through accreditation, document signing, and payment, and
+        produces a durable `Investment` on success. Returns a `url` the recipient opens
+        to begin. If the recipient already has an active session on the SPV, that
+        session is returned instead of creating a duplicate; if another app holds
+        that recipient's active session there, the create is refused with 409
+        `session_conflict` (a recipient has one active session per offering).
+      operationId: createOfferingInvestmentSession
+      security:
+        - bearerAuth:
+            - write:investment_sessions
+      parameters:
+        - $ref: '#/components/parameters/spv_id'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - investment_session
+              properties:
+                investment_session:
+                  $ref: '#/components/schemas/InvestmentSessionCreateInput'
+      responses:
+        '201':
+          description: Investment session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvestmentSessionEnvelope'
+              example:
+                data:
+                  id: is_abc123
+                  type: investment_session
+                  attributes:
+                    status: pending
+                    url: https://wefunder.com/invest/session/is_abc123
+                    spv_id: spv_abc123
+                    email: investor@example.com
+                    allocation_cents: 5000000
+                    kyc_status: pending
+                    funding_status: pending
+                    investment_id: invt_def789
+                    metadata: {}
+                    created_at: '2025-01-15T10:00:00Z'
+                    expires_at: '2026-01-15T17:30:00Z'
+                    events:
+                      - id: evt_abc123
+                        event: investment_session.completed
+                        occurred_at: '2026-01-15T17:30:00Z'
+                meta:
+                  request_id: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /investment_sessions:
+    get:
+      x-wf-stability: beta
+      tags:
+        - Partner Invites & Sessions
+      summary: List investment sessions
+      description: |
+        Alias of `/partner/investment_sessions` (#23636).
+
+        Lists the investment sessions your app created, newest first. A session belongs
+        to the application that created it: no other app sees it, even one of your
+        organization. A syndicate- or company-owned token sees only its own syndicate's or
+        company's sessions. Creating a session needs authority on the offering; reading or
+        canceling one you created does not.
+        Filter by `spv_id` and/or `status`.
+      operationId: listInvestmentSessions
+      security:
+        - bearerAuth:
+            - read:investment_sessions
+      parameters:
+        - name: spv_id
+          in: query
+          description: Only sessions on this SPV
+          schema:
+            type: string
+          example: spv_abc123
+        - name: status
+          in: query
+          description: Only sessions in this state
+          schema:
+            type: string
+            enum:
+              - pending
+              - in_progress
+              - completed
+              - abandoned
+              - expired
+              - canceled
+        - name: per_page
+          in: query
+          description: Page size (default 25, max 100)
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/cursor'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvestmentSessionListEnvelope'
+              example:
+                data:
+                  - id: is_abc123
+                    type: investment_session
+                    attributes:
+                      status: pending
+                      url: https://wefunder.com/invest/session/is_abc123
+                      spv_id: spv_abc123
+                      email: investor@example.com
+                      allocation_cents: 5000000
+                      kyc_status: pending
+                      funding_status: pending
+                      investment_id: invt_def789
+                      metadata: {}
+                      created_at: '2025-01-15T10:00:00Z'
+                      expires_at: '2026-01-15T17:30:00Z'
+                      events:
+                        - id: evt_abc123
+                          event: investment_session.completed
+                          occurred_at: '2026-01-15T17:30:00Z'
+                meta:
+                  has_more: true
+                  page_count: 1
+                  request_id: string
+                  next_cursor: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /investment_sessions/{id}:
+    get:
+      x-wf-stability: beta
+      tags:
+        - Partner Invites & Sessions
+      summary: Get an investment session
+      description: |
+        Alias of `/partner/investment_sessions` (#23636).
+
+        Returns the full session including an `events` timeline of durable platform
+        events recorded about it.
+      operationId: getInvestmentSession
+      security:
+        - bearerAuth:
+            - read:investment_sessions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The investment session ID (prefixed, e.g. `is_abc123`)
+          schema:
+            type: string
+          example: is_abc123
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvestmentSessionEnvelope'
+              example:
+                data:
+                  id: is_abc123
+                  type: investment_session
+                  attributes:
+                    status: pending
+                    url: https://wefunder.com/invest/session/is_abc123
+                    spv_id: spv_abc123
+                    email: investor@example.com
+                    allocation_cents: 5000000
+                    kyc_status: pending
+                    funding_status: pending
+                    investment_id: invt_def789
+                    metadata: {}
+                    created_at: '2025-01-15T10:00:00Z'
+                    expires_at: '2026-01-15T17:30:00Z'
+                    events:
+                      - id: evt_abc123
+                        event: investment_session.completed
+                        occurred_at: '2026-01-15T17:30:00Z'
+                meta:
+                  request_id: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      x-wf-stability: beta
+      tags:
+        - Partner Invites & Sessions
+      summary: Cancel an investment session
+      description: |
+        Alias of `/partner/investment_sessions` (#23636).
+
+        Cancels a session so its link stops working. Valid while the session is
+        `pending`, `in_progress`, or `abandoned`; repeating the call on an
+        already-canceled session returns the same 200. A `completed` or `expired`
+        session cannot be canceled (422 `session_not_cancelable`).
+      operationId: cancelInvestmentSession
+      security:
+        - bearerAuth:
+            - write:investment_sessions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The investment session ID (prefixed, e.g. `is_abc123`)
+          schema:
+            type: string
+          example: is_abc123
+      responses:
+        '200':
+          description: Session canceled (state `canceled` in the response)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvestmentSessionEnvelope'
+              example:
+                data:
+                  id: is_abc123
+                  type: investment_session
+                  attributes:
+                    status: pending
+                    url: https://wefunder.com/invest/session/is_abc123
+                    spv_id: spv_abc123
+                    email: investor@example.com
+                    allocation_cents: 5000000
+                    kyc_status: pending
+                    funding_status: pending
+                    investment_id: invt_def789
+                    metadata: {}
+                    created_at: '2025-01-15T10:00:00Z'
+                    expires_at: '2026-01-15T17:30:00Z'
+                    events:
+                      - id: evt_abc123
+                        event: investment_session.completed
+                        occurred_at: '2026-01-15T17:30:00Z'
+                meta:
+                  request_id: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     bearerAuth:
@@ -6245,12 +6756,15 @@ components:
             read:companies: View company info and offerings you can access, including the investor roster of a company you help run
             read:invite_links: See the investment links your app created and who used them
             write:invite_links: Create investment links to your offerings
+            read:investment_sessions: View hosted investment sessions for your offerings
+            write:investment_sessions: Create and cancel hosted investment sessions
             read:webhooks: View your app's webhook endpoints and delivery history
             write:webhooks: Create, update, and remove your app's webhook endpoints
             read:installations: View where your app is installed
             write:installations: Install and uninstall your app on companies and syndicates you can edit
             read:syndicates: View syndicate deals and members
             write:syndicates: Manage syndicate deals and members
+            write:syndicate_members: Manage syndicate members
         clientCredentials:
           tokenUrl: https://api.wefunder.com/oauth/token
           scopes:
@@ -11141,7 +11655,18 @@ components:
           properties:
             url:
               type: string
-              description: Shareable invite URL. Carries the access token, not the id.
+              nullable: true
+              description: |
+                Shareable invite URL. Carries the access token, not the id. A link
+                made through the API opens the hosted investment flow
+                (`/invest/link/...`); a link made on wefunder.com opens the deal page
+                with its token (`/{company}?invite_token=...`), the URL wefunder.com
+                sends.
+                Null on a per-person invite whose recipient the caller may not see
+                (see `email`): the URL carries the invite's access token and its page
+                shows the recipient. Cancel, update and resend still work. An invite
+                your app addressed by `wefunder_user_id` keeps its URL: its page names
+                no address.
               example: https://wefunder.com/i/abc123token
             reuse:
               type: boolean
@@ -11195,7 +11720,14 @@ components:
             email:
               type: string
               nullable: true
-              description: Per-person only — the recipient email you supplied at create. Always `null` for an invite addressed by `wefunder_user_id`, which never returns the account's email.
+              description: |
+                Per-person only — recipient email. Always `null` for an invite
+                addressed by `wefunder_user_id`, which never returns the account's
+                email. Otherwise null unless the token holds `read:investors:pii`
+                (on an install, the install must grant it too), except that the app
+                which created the invite through the API with an `email` always sees
+                the address it supplied. The invite still sends, resends and reports
+                status when the email is null.
               example: investor@example.com
             wefunder_user_id:
               type: string

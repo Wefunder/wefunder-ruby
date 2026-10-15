@@ -15,7 +15,7 @@ require 'time'
 
 module WefunderGenerated
   class InviteLinkAttributes
-    # Shareable invite URL. Carries the access token, not the id.
+    # Shareable invite URL. Carries the access token, not the id. A link made through the API opens the hosted investment flow (`/invest/link/...`); a link made on wefunder.com opens the deal page with its token (`/{company}?invite_token=...`), the URL wefunder.com sends. Null on a per-person invite whose recipient the caller may not see (see `email`): the URL carries the invite's access token and its page shows the recipient. Cancel, update and resend still work. An invite your app addressed by `wefunder_user_id` keeps its URL: its page names no address. 
     attr_accessor :url
 
     # `true` for a reusable (shareable) link, `false` for a per-person invite. Fixed at creation. Use this, not the presence of `email`, to tell the two apart. 
@@ -41,7 +41,7 @@ module WefunderGenerated
 
     attr_accessor :created_at
 
-    # Per-person only — the recipient email you supplied at create. Always `null` for an invite addressed by `wefunder_user_id`, which never returns the account's email.
+    # Per-person only — recipient email. Always `null` for an invite addressed by `wefunder_user_id`, which never returns the account's email. Otherwise null unless the token holds `read:investors:pii` (on an install, the install must grant it too), except that the app which created the invite through the API with an `email` always sees the address it supplied. The invite still sends, resends and reports status when the email is null. 
     attr_accessor :email
 
     # Per-person only — the recipient's id (`usr_...`), when they are an existing user.
@@ -138,6 +138,7 @@ module WefunderGenerated
     # List of attributes with nullable: true
     def self.openapi_nullable
       Set.new([
+        :'url',
         :'allocation_cents',
         :'max_uses',
         :'first_clicked_at',
