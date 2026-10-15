@@ -300,8 +300,10 @@ module Wefunder
     end
 
     # /referral_codes (read:referral_codes / write:referral_codes; beta). Mint with your app's server
-    # key, add +?wfr=ref_…+ to any wefunder.com link, and read per-company weekly cohorts from +stats+.
-    # Investors are never identified.
+    # key, add +?wfr=ref_…+ to any wefunder.com link, and read +stats+. What +stats+ shows per company
+    # depends on its +level+: +counts+ is weekly cohorts (+weeks+), +anonymized+ is per-investment rows
+    # with opaque tokens (+investments+), and +full+, for an app installed on the company with a
+    # founder-tier grant, carries investor names and emails.
     class ReferralCodes < Namespace
       def list(**opts) = wrap { raw.referral_codes.list_referral_codes(norm(opts)) }
       def all(**opts) = pages(opts) { |o| raw.referral_codes.list_referral_codes(o) }

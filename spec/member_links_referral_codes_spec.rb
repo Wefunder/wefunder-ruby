@@ -2,6 +2,7 @@
 
 # wf.member_links + wf.referral_codes (Wefunder-Version 2026-10-15): paths, bodies, headers, envelopes.
 require "uri"
+require_relative "../examples/get_referral_code_stats"
 
 RSpec.describe "member links and referral codes" do
   Call = Struct.new(:verb, :path, :params, :headers, :body)
@@ -24,8 +25,12 @@ RSpec.describe "member links and referral codes" do
         SpecSupport.json_response(200, { data: LINK.merge(attributes: LINK[:attributes].merge(state: "canceled")) })
       when [:get, "/referral_codes"]
         SpecSupport.json_response(200, { data: [CODE], meta: { has_more: false, next_cursor: nil, active_limit: 50 } })
-      when [:get, "/referral_codes/ref_1/stats"]
-        SpecSupport.json_response(200, { data: { id: "ref_1", type: "referral_code_stats", attributes: { label: "October", companies: [{ company: "co_1", level: "anonymized", weeks: [] }] } }, meta: { has_more: false, next_cursor: nil } })
+      when [:get, "/referral_codes/ref_1/stats"], [:get, "/referral_codes/ref_7hQExampleCode00001/stats"]
+        SpecSupport.json_response(200, { data: { id: "ref_1", type: "referral_code_stats", attributes: { label: "October", companies: [
+                                    { company: "co_1", level: "counts", in_scope_since: "2026-W40", weeks: [{ week: "2026-W41", clicks: 3 }] },
+                                    { company: "co_2", level: "anonymized",
+                                      investments: [{ investment: "opq_i", investor: "opq_u", week: "2026-W41", amount_tier: "1k_to_5k", status: "active", time_to_invest: "same_day" }] }
+                                  ] } }, meta: { has_more: false, next_cursor: nil } })
       when [:post, "/referral_codes"] then SpecSupport.json_response(201, { data: CODE })
       else SpecSupport.json_response(200, { data: env.url.path.start_with?("/referral") ? CODE : LINK })
       end
@@ -72,6 +77,11 @@ RSpec.describe "member links and referral codes" do
     stats = wf.referral_codes.stats("ref_1", company_id: "co_1")
     expect(stats.data.attributes.companies.first.company).to eq("co_1")
     expect(stats.meta.has_more).to be(false)
+    # The two shapes a company can take: counts → weeks, anonymized/full → investments (weeks nil).
+    counts, rows = stats.data.attributes.companies
+    expect(counts.weeks.size).to eq(1)
+    expect(rows.weeks).to be_nil
+    expect(rows.investments.size).to eq(1)
     expect(seen.map { |c| "#{c.verb.to_s.upcase} #{c.path}" }).to eq([
                                                                        "GET /referral_codes", "POST /referral_codes", "GET /referral_codes/ref_1",
                                                                        "PATCH /referral_codes/ref_1", "GET /referral_codes/ref_1/stats"
@@ -79,5 +89,11 @@ RSpec.describe "member links and referral codes" do
     expect(JSON.parse(seen[1].body)).to eq("label" => "October", "company_id" => "co_1", "utm" => { "source" => "newsletter" })
     expect(JSON.parse(seen[3].body)).to eq("active" => false)
     expect(seen[4].params["company_id"]).to eq("co_1")
+  end
+
+  it "the published stats example handles counts and row-level companies" do
+    _, faraday = recorder
+    stats = GetReferralCodeStatsExample.example(Wefunder::Client.new(access_token: "at_live_x", faraday: faraday))
+    expect(stats.data.attributes.companies.map(&:level)).to eq(%w[counts anonymized])
   end
 end
